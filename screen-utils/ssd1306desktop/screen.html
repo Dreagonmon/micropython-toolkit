@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSD1306 SCREEN {name:s}</title>
+  <script>
+    var sse_nm = undefined
+    var buttons = JSON.parse(`{buttons:s}`)
+    function screenUpdate(event) {
+      // update screen
+      let url = event.data
+      let img = document.querySelector("#screen-img")
+      img.src = url
+    }
+    function startService() {
+      // 关闭现有的连接
+      if (sse_nm != undefined)
+        sse_nm.close()
+      sse_nm = new EventSource("/screen_event/{name:s}")
+      sse_nm.addEventListener("screen_update", screenUpdate)
+      sse_nm.onerror = () => {
+        stopService()
+        // 3秒后重试连接，防止频繁请求服务器
+        setTimeout(startService, 3000);
+      }
+    }
+    function stopService() {
+      if (sse_nm != undefined)
+        sse_nm.close()
+    }
+    // 按钮事件
+    function keyOp(key,op,event){
+      event.preventDefault()
+      let url = `/keypad_event/{name:s}/${key}/${op}`
+      navigator.sendBeacon(url)
+      console.log(url)
+    }
+    function renderButtons(){
+      // 设置样式
+      const COLS = 5
+      let container = document.querySelector("#buttons")
+      container.innerHTML = ""
+      let rows = Math.ceil(buttons.length / COLS)
+      let cwidth = container.clientWidth
+      let cheight = rows * (cwidth / COLS)
+      container.style.gridTemplateColumns = `repeat(5, 1fr)`;
+      container.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+      container.style.height = `${cheight}px`
+      // 布局按钮
+      for (let i in buttons){
+        let key = buttons[i]
+        let btn = document.createElement("button")
+        btn.innerText = key
+        if (key != ""){
+          btn.onmousedown = btn.ontouchstart = keyOp.bind(this,key,"down")
+          btn.onmouseup = btn.ontouchend = keyOp.bind(this,key,"up")
+        }else{
+          btn.ontouchstart = btn.ontouchend = btn.onclick = (event)=>{event.preventDefault()}
+          btn.style.background = "none"
+          btn.style.border = "none"
+        }
+        container.append(btn)
+      }
+    }
+    // 浏览器事件
+    window.onload = ()=>{
+      startService()
+      renderButtons()
+    }
+    window.onresize = renderButtons
+  </script>
+  <style>
+    #container {
+      margin: 0 auto;
+      max-width: 512px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: lightskyblue;
+    }
+    #screen-img {
+      image-rendering: crisp-edges;
+      width: 80%;
+    }
+    #buttons {
+      margin-top: 1rem;
+      width: 100%;
+      display: grid;
+      gap: 0.3rem;
+    }
+    #buttons button{
+      background: rgba(255,255,255,0.2);
+      border-radius: 0.5rem;
+      border: 1px solid gray;
+    }
+  </style>
+</head>
+<body id="container">
+  <div>{name:s}</div>
+  <img id="screen-img">
+  <div id="buttons"></div>
+</body>
+</html>

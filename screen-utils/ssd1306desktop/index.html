@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSD1306 SCREEN LIST</title>
+  <script>
+    var screens = JSON.parse(`{screens:s}`)
+    function renderButtons() {
+      console.log(screens)
+      let container = document.querySelector("#screens")
+      for (let k in screens){
+        let name = screens[k]
+        let link = document.createElement("a")
+        link.innerText = name
+        link.href = `/${name}`
+        container.append(link)
+      }
+    }
+    // 浏览器事件
+    window.onload = () => {
+      renderButtons()
+    }
+  </script>
+  <style>
+    #container {
+      margin: 0 auto;
+      max-width: 512px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: lightskyblue;
+    }
+    #screens {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+  </style>
+</head>
+<body id="container">
+  <h3>Screen List</h3>
+  <div id="screens"></div>
+</body>
+</html>
