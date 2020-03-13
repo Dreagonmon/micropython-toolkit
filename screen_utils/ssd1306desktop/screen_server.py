@@ -27,11 +27,11 @@ def start():
     __server_thread.setDaemon(True)
     __server_thread.start()
 
-def setup_screen(name,width,height,buffer,buttons=[],button_callback=None):
+def setup_screen(name,width,height,buffer,invert=True,buttons=[],button_callback=None):
     assert buffer != None
     assert width <= 128 and width >= 2
     assert height <= 64 and height >= 2
-    __screens[name] = {"buffer":buffer,"width":width,"height":height,"buttons":buttons,"keypad":{},"callback":button_callback}
+    __screens[name] = {"buffer":buffer,"width":width,"height":height,"invert":invert,"buttons":buttons,"keypad":{},"callback":button_callback}
 
 def remove_screen(name):
     if name in __screens:
@@ -137,7 +137,7 @@ def __get_image_data_url(name):
     if not name in __screens.keys():
         return ""
     screen = __screens[name]
-    img = ssd1306img.emu1306(screen["buffer"],screen["width"],screen["height"],invert=True)
+    img = ssd1306img.emu1306(screen["buffer"],screen["width"],screen["height"],invert=screen["invert"])
     output = BytesIO()
     img.save(output,format="png")
     data = b64encode(output.getvalue()).decode("utf-8")

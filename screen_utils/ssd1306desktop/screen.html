@@ -6,6 +6,8 @@
   <script>
     var sse_nm = undefined
     var buttons = JSON.parse(`{buttons:s}`)
+    var keylist = ["r","t","y","u","i","f","g","h","j","k","c","v","b","n","m"]
+    var keyEventList = {}
     function screenUpdate(event) {
       // update screen
       let url = event.data
@@ -33,7 +35,7 @@
       event.preventDefault()
       let url = `/keypad_event/{name:s}/${key}/${op}`
       navigator.sendBeacon(url)
-      console.log(url)
+      // console.log(url)
     }
     function renderButtons(){
       // 设置样式
@@ -47,13 +49,16 @@
       container.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
       container.style.height = `${cheight}px`
       // 布局按钮
+      keyEventList = {}
       for (let i in buttons){
-        let key = buttons[i]
+        let keyName = buttons[i]
+        let keyboard = keylist[i]
         let btn = document.createElement("button")
-        btn.innerText = key
-        if (key != ""){
-          btn.onmousedown = btn.ontouchstart = keyOp.bind(this,key,"down")
-          btn.onmouseup = btn.ontouchend = keyOp.bind(this,key,"up")
+        btn.innerText = keyName
+        if (keyName != ""){
+          btn.onmousedown = btn.ontouchstart = keyOp.bind(this,keyName,"down")
+          btn.onmouseup = btn.ontouchend = keyOp.bind(this,keyName,"up")
+          keyEventList[keyboard] = keyName;
         }else{
           btn.ontouchstart = btn.ontouchend = btn.onclick = (event)=>{event.preventDefault()}
           btn.style.background = "none"
@@ -68,6 +73,18 @@
       renderButtons()
     }
     window.onresize = renderButtons
+    window.onkeydown = (event)=>{
+      let code = event.key.toLowerCase()
+      if ((code in keyEventList) && !event.repeat){
+        keyOp(keyEventList[code],"down",event)
+      }
+    }
+    window.onkeyup = (event)=>{
+      let code = event.key.toLowerCase()
+      if ((code in keyEventList) && !event.repeat){
+        keyOp(keyEventList[code],"up",event)
+      }
+    }
   </script>
   <style>
     #container {
@@ -93,11 +110,21 @@
       border-radius: 0.5rem;
       border: 1px solid gray;
     }
+    #info {
+      font-family: monospace;
+      font-size: 2rem;
+    }
   </style>
 </head>
 <body id="container">
   <div>{name:s}</div>
   <img id="screen-img">
   <div id="buttons"></div>
+  <div>you can use the follow key to control keyEvent:</div>
+  <div id="info">
+    <div>R T Y U I</div>
+    <div>F G H J K</div>
+    <div>C V B N M</div>
+  </div>
 </body>
 </html>
