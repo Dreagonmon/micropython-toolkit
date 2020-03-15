@@ -102,7 +102,7 @@ def __start_server():
 # web请求相关方法
 # 主页
 async def __index_page(request):
-    with open(os.path.dirname(__file__)+"/index.html","r",encoding="utf-8") as f:
+    with open(os.path.dirname(os.path.abspath(__file__))+"/index.html","r",encoding="utf-8") as f:
         html = f.read()
     html = html.replace("{screens:s}",json.dumps(list(__screens.keys())))
     return web.Response(content_type="text/html",body=html)
@@ -111,7 +111,7 @@ async def __screen_page(request):
     name = request.match_info["name"]
     if name not in __screens:
         return web.Response(content_type="text/html",body="<h1>Screen Not Exist</h1>")
-    with open(os.path.dirname(__file__)+"/screen.html","r",encoding="utf-8") as f:
+    with open(os.path.dirname(os.path.abspath(__file__))+"/screen.html","r",encoding="utf-8") as f:
         html = f.read()
     html = html.replace("{name:s}",name).replace("{buttons:s}",json.dumps(__screens[name]["buttons"]))
     return web.Response(content_type="text/html",body=html)

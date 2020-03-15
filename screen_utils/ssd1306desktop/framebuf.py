@@ -302,9 +302,14 @@ class FrameBuffer:
                 y += s_y
         self.pixel(x, y, color)
 
-    def blit(self):
-        """blit is not yet implemented"""
-        raise NotImplementedError()
+    def blit(self,fbuf,x,y,key=None):
+        """Draw another FrameBuffer on top of the current one at the given coordinates. If key is specified then it should be a color integer and the corresponding color will be considered transparent: all pixels with that color value will not be drawn."""
+        for tx in range(fbuf.width):
+            for ty in range(fbuf.height):
+                pix = fbuf.pixel(tx,ty)
+                if key != None and pix == key:
+                    continue
+                self.pixel(x+tx,y+ty,pix)
 
     def scroll(self, delta_x, delta_y):
         """shifts framebuf in x and y direction"""
@@ -349,29 +354,6 @@ class FrameBuffer:
                                      x + (i * w)*size,
                                      y, self, color, size=size)
             y += self._font.font_height*size
-    # pylint: enable=too-many-arguments
-
-
-
-    def image(self, img):
-        """Set buffer to value of Python Imaging Library image.  The image should
-        be in 1 bit mode and a size equal to the display size."""
-        if img.mode != '1':
-            raise ValueError('Image must be in mode 1.')
-        imwidth, imheight = img.size
-        if imwidth != self.width or imheight != self.height:
-            raise ValueError('Image must be same dimensions as display ({0}x{1}).' \
-                .format(self.width, self.height))
-        # Grab all the pixels from the image, faster than getpixel.
-        pixels = img.load()
-        # Clear buffer
-        for i in range(len(self.buf)):
-            self.buf[i] = 0
-        # Iterate through the pixels
-        for x in range(self.width):       # yes this double loop is slow,
-            for y in range(self.height):  #  but these displays are small!
-                if pixels[(x, y)]:
-                    self.pixel(x, y, 1)   # only write if pixel is true
 
 # MicroPython basic bitmap font renderer.
 # Author: Tony DiCola
