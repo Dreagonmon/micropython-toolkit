@@ -8,11 +8,53 @@
     var buttons = JSON.parse(`{buttons:s}`)
     var keylist = ["r","t","y","u","i","f","g","h","j","k","c","v","b","n","m"]
     var keyEventList = {}
+    function drawScreen(data,width,height,imgData){
+      let rows = Math.ceil(data.length / width)
+      for (let row=0;row<rows;row++){
+        for (let col=0;col<width;col++){
+          for (let bit=7;bit>-1;bit--){
+            // parse byte
+            y = row*8 + bit
+            pos = y*width + col
+            pat = 0x01 << bit
+            // console.log(col,y)
+            if ((data[row*width + col] & pat) > 0){
+              imgData.data[pos*4] = 0x00 //R
+              imgData.data[pos*4+1] = 0x00 //G
+              imgData.data[pos*4+2] = 0x00 //B
+              imgData.data[pos*4+3] = 0xff //A
+            }else{
+              imgData.data[pos*4] = 0xff //R
+              imgData.data[pos*4+1] = 0xff //G
+              imgData.data[pos*4+2] = 0xff //B
+              imgData.data[pos*4+3] = 0xff //A
+            }
+          }
+        }
+      }
+      // console.log(imgData.data)
+      return imgData
+    }
     function screenUpdate(event) {
       // update screen
-      let url = event.data
-      let img = document.querySelector("#screen-img")
-      img.src = url
+      let screen = JSON.parse(event.data)
+      window.data = screen
+      // 调整canvas尺寸
+      let canvas = document.querySelector("#screen-img")
+      let cwidth = canvas.clientWidth
+      let cheight = Math.ceil(cwidth * screen.height / screen.width)
+      canvas.style.height = `${cheight}px`
+      canvas.width = screen.width
+      canvas.height = screen.height
+      // 绘制图像
+      let ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#000";
+      ctx.imageSmoothingEnabled = false; // 像素风
+      ctx.fillRect(0,0,screen.width,screen.height)
+      let imgData = ctx.getImageData(0,0,screen.width,screen.height)
+      imgData = drawScreen(screen.data,screen.width,screen.height,imgData)
+      ctx.putImageData(imgData,0,0)
+      //
     }
     function startService() {
       // 关闭现有的连接
@@ -118,7 +160,7 @@
 </head>
 <body id="container">
   <div>{name:s}</div>
-  <img id="screen-img">
+  <canvas id="screen-img"></canvas>
   <div id="buttons"></div>
   <div>you can use the follow key to control keyEvent:</div>
   <div id="info">

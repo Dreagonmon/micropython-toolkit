@@ -1,5 +1,4 @@
 import asyncio, threading, os, json
-from . import ssd1306img
 from aiohttp import web
 from io import BytesIO
 from base64 import b64encode
@@ -133,17 +132,24 @@ async def __notify(name):
         return False
     finally:
         lock.release()
-def __get_image_data_url(name):
+def __get_image_data(name):
     if not name in __screens.keys():
         return ""
     screen = __screens[name]
-    img = ssd1306img.emu1306(screen["buffer"],screen["width"],screen["height"],invert=screen["invert"])
-    output = BytesIO()
-    img.save(output,format="png")
-    data = b64encode(output.getvalue()).decode("utf-8")
-    output.close()
-    data = "data:image/png;base64," + data
-    return data
+    width = screen["width"]
+    height = screen["height"]
+    data = []
+    for byt in screen["buffer"]:
+        if screen["invert"]:
+            data.append(~byt & 0xFF)
+        else:
+            data.append(byt & 0xFF)
+    data = {
+        "width":width,
+        "height":height,
+        "data":data
+    }
+    return json.dumps(data)
 async def __keep_alive_task():
     # 定时发送消息，防止连接关闭
     try:
@@ -172,13 +178,13 @@ async def __screen_event(request):
     try:
         await resp.write(":connected\r\n".encode("utf-8"))
         # 激活一次事件
-        await resp.write("event: {:s}\r\ndata: {:s}\r\n\r\n".format("screen_update",__get_image_data_url(name)).encode("utf-8"))
+        await resp.write("event: {:s}\r\ndata: {:s}\r\n\r\n".format("screen_update",__get_image_data(name)).encode("utf-8"))
         while True:
             await lock.acquire()
             try:
                 # 等待事件唤醒
                 await lock.wait()
-                await resp.write("event: {:s}\r\ndata: {:s}\r\n\r\n".format("screen_update",__get_image_data_url(name)).encode("utf-8"))
+                await resp.write("event: {:s}\r\ndata: {:s}\r\n\r\n".format("screen_update",__get_image_data(name)).encode("utf-8"))
             finally:
                 lock.release()
     finally:

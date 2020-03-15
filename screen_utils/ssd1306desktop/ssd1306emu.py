@@ -11,7 +11,7 @@ class SSD1306_EMU(framebuf.FrameBuffer):
         self.screen = memoryview(bytearray(self.pages * self.width))
         super().__init__(self.buffer, self.width, self.height, framebuf.MONO_VLSB)
         self.name = name
-        self.is_invert = True
+        self.is_invert = True # True means black background and white color
         self.buttons = buttons
         self.button_callback = button_callback
         self.init_display()
