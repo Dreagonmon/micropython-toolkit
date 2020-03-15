@@ -56,3 +56,7 @@ class SSD1306_EMU(framebuf.FrameBuffer):
             for p in range(p0,p1):
                 self.screen[p*self.width + x] = self.buffer[p*self.width + x]
         screen_server.update_screen(self.name,self.screen)
+    
+    def is_key_down(self,key):
+        '''this function is only for emu, you must use another implement in micropython'''
+        return screen_server.is_key_down(self.name,key)

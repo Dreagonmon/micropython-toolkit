@@ -75,6 +75,13 @@
     // 按钮事件
     function keyOp(key,op,event){
       event.preventDefault()
+      // effect
+      let btn = document.querySelector(`#btn-${key}`)
+      if (op == "down"){
+        btn.style.background = `rgba(255, 255, 255, 0.2)`
+      }else{
+        btn.style.background = ""
+      }
       let url = `/keypad_event/{name:s}/${key}/${op}`
       navigator.sendBeacon(url)
       // console.log(url)
@@ -98,6 +105,7 @@
         let btn = document.createElement("button")
         btn.innerText = keyName
         if (keyName != ""){
+          btn.id = `btn-${keyName}`
           btn.onmousedown = btn.ontouchstart = keyOp.bind(this,keyName,"down")
           btn.onmouseup = btn.ontouchend = keyOp.bind(this,keyName,"up")
           keyEventList[keyboard] = keyName;
@@ -135,7 +143,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      background: lightskyblue;
+      background: #000;
+      color: #FFF;
     }
     #screen-img {
       image-rendering: crisp-edges;
@@ -148,9 +157,10 @@
       gap: 0.3rem;
     }
     #buttons button{
-      background: rgba(255,255,255,0.2);
+      background: transparent;
       border-radius: 0.5rem;
-      border: 1px solid gray;
+      border: 1px solid #FFF;
+      color: #FFF;
     }
     #info {
       font-family: monospace;
