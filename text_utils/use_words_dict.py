@@ -131,7 +131,7 @@ class InputManager():
 
 def __test():
     input_manager = InputManager("dict.bin")
-    print("小写字母输入拼音，`[`重置候选词分页，`]`下一页候选词，数字键选择候选词，`^M+C`退出")
+    print("小写字母输入拼音，`[`重置候选词分页，`]`下一页候选词，数字键选择候选词，Ctrl+C`退出")
     import msvcrt
     c = msvcrt.getch()
     txt = "" # 已输入文字

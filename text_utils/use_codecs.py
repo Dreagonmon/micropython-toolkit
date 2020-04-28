@@ -2,7 +2,10 @@
 编码转换辅助文件，文件开头：|2 b"CO"|4记录的编码数量，即 文件大小=数量*(源长度+目标长度)+8|1源长度|1目标长度|
 之后 |源编码|目标编码| 为一组，按照源编码从小到大排列，使用时二分搜索查找对应的编码转换
 '''
-import coding
+try:
+    from . import coding
+except:
+    import coding
 
 def __bin_search_in_file(file_handle,target,start,end,s_size,t_size,buffer_size=0,buffer=None):
     if end <= start:
@@ -44,6 +47,11 @@ def __bin_search_in_file(file_handle,target,start,end,s_size,t_size,buffer_size=
         return file_handle.read(t_size)
 
 def convert(byts,codec_file,buffer_size=0):
+    '''使用文件辅助转换编码。
+        byts:字符的字节序列
+        codec_file:编码转换文件
+        buffer_size:文件读取buffer大小，可以减少文件读取次数从而加速转换
+        返回转换后的字节序列或False'''
     with open(codec_file,"rb") as f:
         magic = f.read(2)
         assert magic == b"CO"
@@ -54,11 +62,11 @@ def convert(byts,codec_file,buffer_size=0):
         resault = __bin_search_in_file(f,target,0,count,s_size,t_size,buffer_size=buffer_size)
         return resault
 
-def main():
+def __main():
     unic = coding.UTF_8.u82unicode("神".encode("utf8"))
     byts = convert(unic.to_bytes(2,"big",signed=False),"unicode2gb2312.codec",buffer_size=128)
     print("0x{:X}".format(unic),byts.decode("gb2312"))
     pass
 
 if __name__ == "__main__":
-    main()
+    __main()
