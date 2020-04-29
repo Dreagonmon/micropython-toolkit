@@ -16,23 +16,24 @@ def __bin_search_in_file(file_handle,target,start,end,s_size,t_size,buffer_size=
     if (end - start <= buffer_size//block_size):
         if (buffer == None):
             # first time, create buffer
-            file_handle.seek(start*block_size)
+            file_handle.seek(start*block_size + 8) #要跳过文件头8字节
             data = file_handle.read((end-start)*block_size)
             buffer = memoryview(data)
             end = end - start
             start = 0
         center = (end + start) // 2
-        pos = center * (s_size + t_size)
-        value = int.from_bytes(buffer[pos:pos+s_size],"big",signed=False)
+        pos = center * block_size
+        value = int.from_bytes(buffer[pos:pos+s_size],"big")
         # print('buff',start,center,end,"0x{:X}".format(value))
     else:
         # read from file
         center = (end + start) // 2
         pos = center * (s_size + t_size) + 8 #要跳过文件头8字节
         file_handle.seek(pos)
-        value = int.from_bytes(file_handle.read(s_size),"big",signed=False)
+        value = int.from_bytes(file_handle.read(s_size),"big")
         # print('file',start,end,end-start,"0x{:X}".format(value))
     # compare
+    # print("0x{:X} {} {} {}".format(value,start,center,end))
     if value < target:
         return __bin_search_in_file(file_handle,target,center+1,end,s_size,t_size,buffer_size=buffer_size,buffer=buffer)
     if value > target:
@@ -46,7 +47,7 @@ def __bin_search_in_file(file_handle,target,start,end,s_size,t_size,buffer_size=
         # find in file
         return file_handle.read(t_size)
 
-def convert(byts,codec_file,buffer_size=0):
+def convert(target,codec_file,buffer_size=0):
     '''使用文件辅助转换编码。
         byts:字符的字节序列
         codec_file:编码转换文件
@@ -55,17 +56,38 @@ def convert(byts,codec_file,buffer_size=0):
     with open(codec_file,"rb") as f:
         magic = f.read(2)
         assert magic == b"CO"
-        count = int.from_bytes(f.read(4),"big",signed=False)
-        s_size = int.from_bytes(f.read(1),"big",signed=False)
-        t_size = int.from_bytes(f.read(1),"big",signed=False)
-        target = int.from_bytes(byts,"big",signed=False)
+        count = int.from_bytes(f.read(4),"big")
+        s_size = int.from_bytes(f.read(1),"big")
+        t_size = int.from_bytes(f.read(1),"big")
         resault = __bin_search_in_file(f,target,0,count,s_size,t_size,buffer_size=buffer_size)
         return resault
 
+def convert_u8_gb2312(byts,codec_file,buffer_size=0):
+    index = 0
+    res = bytearray()
+    while index < len(byts):
+        fb = byts[index]
+        l = coding.UTF_8.u8len(fb)
+        if l == 1:
+            index += 1
+            res.extend(coding.GB2312.ascii2gb2312(fb))
+            continue
+        unic = coding.UTF_8.u82unicode(byts[index:index+l])
+        bs = convert(unic,codec_file,buffer_size=buffer_size)
+        if not bs:
+            index += l
+            res.extend(coding.GB2312.ascii2gb2312(32))
+            continue
+        res.extend(bs)
+        index += l
+    return res
+
 def __main():
-    unic = coding.UTF_8.u82unicode("神".encode("utf8"))
-    byts = convert(unic.to_bytes(2,"big",signed=False),"unicode2gb2312.codec",buffer_size=128)
-    print("0x{:X}".format(unic),byts.decode("gb2312"))
+    byts = convert_u8_gb2312("你好x啊aXSA+_生僻字蘃还好咯".encode("utf8"),"unicode2gb2312.codec",buffer_size=8)
+    # for b in byts:
+    #     print("0x{:X}".format(b),end=" ")
+    # print()
+    print(byts.decode('gb2312'))
     pass
 
 if __name__ == "__main__":
