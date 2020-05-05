@@ -2,16 +2,17 @@
 # e-ink display GDEH0213B73, using 4-wire SPI
 # ========
 # import gdeh0213b73 as epaper
-# screen = epaper.EPD(espi, cs, dc, rst, busy)
+# screen = epaper.EPD(espi, cs, dc, rst, busy, rotation=epaper.ROTATION_0, invert=False)
 # screen.fill(1)
 # screen.text('Hello Dragon!',6,32,0)
-# screen.hard_reset()
-# screen.update()
-# # screen.update_fast()
+# await screen.hard_reset()
+# await screen.update()
+# # await screen.update_fast()
 # ========
 from micropython import const
 from time import sleep_ms
 import framebuf
+import uasyncio as asyncio
 
 # Rotaion
 ROTATION_0 = const(0)
@@ -128,82 +129,88 @@ class EPD(framebuf.FrameBuffer):
     def width(self):
         return self.__width
 
-    def _command(self, command, data=None):
+    async def _command(self, command, data=None):
         self.cs(1) # according to LOLIN_EPD
         self.dc(0)
         self.cs(0)
         self.spi.write(command)
         self.cs(1)
+        await asyncio.sleep(0)
         if data is not None:
-            self._data(data)
+            await self._data(data)
 
-    def _data(self, data):
+    async def _data(self, data):
+        length = len(data)
+        index = 0
         self.cs(1) # according to LOLIN_EPD
         self.dc(1)
         self.cs(0)
-        self.spi.write(data)
+        while index < length:
+            await asyncio.sleep(0)
+            self.spi.write(data[index:index+128])
+            index += 128
         self.cs(1)
 
-    def _init(self):
-        self._wait_until_idle()
-        self._command(SW_RESET) # soft reset
-        self._wait_until_idle()
-        self._command(SET_ANALOG_BLOCK_CONTROL, b'\x54') #set analog block control
-        self._command(SET_DIGITAL_BLOCK_CONTROL, b'\x3B') #set digital block control
-        self._command(DRIVER_OUTPUT_CONTROL, b'\xF9\x00\x00') #Driver output control
-        self._command(DATA_ENTRY_MODE_SETTING, b'\x03') #data entry mode
-        self._command(BORDER_WAVEFORM_CONTROL, b'\x00') # BorderWavefrom
-        self._command(WRITE_VCOM_REGISTER, b'\x50') # VCOM Voltage
-        self._command(GATE_DRIVING_VOLTAGE_CONTROL, LUT_FULL_UPDATE[100:101])
-        self._command(SOURCE_DRIVING_VOLTAGE_CONTROL, LUT_FULL_UPDATE[101:103])
-        self._command(SET_DUMMY_LINE_PERIOD, LUT_FULL_UPDATE[105:106]) # Dummy Line
-        self._command(SET_GATE_TIME, LUT_FULL_UPDATE[106:107]) # Gate time
-        self._set_lut(LUT_FULL_UPDATE[0:100])
-        self.invert(self.__invert)
-        self._wait_until_idle()
+    async def _init(self):
+        await self._wait_until_idle()
+        await self._command(SW_RESET) # soft reset
+        await self._wait_until_idle()
+        await self._command(SET_ANALOG_BLOCK_CONTROL, b'\x54') #set analog block control
+        await self._command(SET_DIGITAL_BLOCK_CONTROL, b'\x3B') #set digital block control
+        await self._command(DRIVER_OUTPUT_CONTROL, b'\xF9\x00\x00') #Driver output control
+        await self._command(DATA_ENTRY_MODE_SETTING, b'\x03') #data entry mode
+        await self._command(BORDER_WAVEFORM_CONTROL, b'\x00') # BorderWavefrom
+        await self._command(WRITE_VCOM_REGISTER, b'\x50') # VCOM Voltage
+        await self._command(GATE_DRIVING_VOLTAGE_CONTROL, LUT_FULL_UPDATE[100:101])
+        await self._command(SOURCE_DRIVING_VOLTAGE_CONTROL, LUT_FULL_UPDATE[101:103])
+        await self._command(SET_DUMMY_LINE_PERIOD, LUT_FULL_UPDATE[105:106]) # Dummy Line
+        await self._command(SET_GATE_TIME, LUT_FULL_UPDATE[106:107]) # Gate time
+        await self._set_lut(LUT_FULL_UPDATE[0:100])
+        await self.invert(self.__invert)
+        await self._wait_until_idle()
     
-    def _power_on(self):
-        self._command(DISPLAY_UPDATE_CONTROL_2, b'\xC0')
-        self._command(MASTER_ACTIVATION)
-        self._wait_until_idle()
+    async def _power_on(self):
+        await self._command(DISPLAY_UPDATE_CONTROL_2, b'\xC0')
+        await self._command(MASTER_ACTIVATION)
+        await self._wait_until_idle()
     
-    def _power_off(self):
-        self._command(DISPLAY_UPDATE_CONTROL_2, b'\xC3')
-        self._command(MASTER_ACTIVATION)
-        self._wait_until_idle()
+    async def _power_off(self):
+        await self._command(DISPLAY_UPDATE_CONTROL_2, b'\xC3')
+        await self._command(MASTER_ACTIVATION)
+        await self._wait_until_idle()
 
-    def _init_full(self):
-        self._init()
-        self._set_lut(LUT_FULL_UPDATE)
-        self._power_on()
+    async def _init_full(self):
+        await self._init()
+        await self._set_lut(LUT_FULL_UPDATE)
+        await self._power_on()
     
-    def _init_part(self):
-        self._init()
-        self._set_lut(LUT_PART_UPDATE)
-        self._power_on()
+    async def _init_part(self):
+        await self._init()
+        await self._set_lut(LUT_PART_UPDATE)
+        await self._power_on()
     
-    def _update_full(self):
-        self._command(DISPLAY_UPDATE_CONTROL_2, b'\xC7')
-        self._command(MASTER_ACTIVATION)
-        self._wait_until_idle()
+    async def _update_full(self):
+        await self._command(DISPLAY_UPDATE_CONTROL_2, b'\xC7')
+        await self._command(MASTER_ACTIVATION)
+        await self._wait_until_idle()
     
-    def _update_part(self):
-        self._command(DISPLAY_UPDATE_CONTROL_2, b'\x04')
-        self._command(MASTER_ACTIVATION)
-        self._wait_until_idle()
-        self._command(TERMINATE_FRAME_READ_WRITE)
+    async def _update_part(self):
+        await self._command(DISPLAY_UPDATE_CONTROL_2, b'\x04')
+        await self._command(MASTER_ACTIVATION)
+        await self._wait_until_idle()
+        await self._command(TERMINATE_FRAME_READ_WRITE)
     
-    def _wait_until_idle(self):
+    async def _wait_until_idle(self):
         while self.busy.value() == 1:
-            sleep_ms(10)
+            await asyncio.sleep(0)
 
-    def _set_lut(self, lut):
-        self._command(WRITE_LUT_REGISTER, lut)
+    async def _set_lut(self, lut):
+        await self._command(WRITE_LUT_REGISTER, lut)
 
-    @micropython.native
-    def _get_rotated_buffer(self):
+    async def _get_rotated_buffer(self):
         # no need to rotate
         if self.__rotation == ROTATION_0:
+            await asyncio.sleep(0)
             return self.buffer
         # create buffer and rotate
         size = EPD_WIDTH * EPD_HEIGHT // 8
@@ -214,54 +221,59 @@ class EPD(framebuf.FrameBuffer):
             for x in range(self.__width):
                 for y in range(self.__height):
                     frame.pixel(y,EPD_HEIGHT-x-1,self.pixel(x,y))
+                await asyncio.sleep(0)
         if self.__rotation == ROTATION_90:
             for x in range(self.__width):
                 for y in range(self.__height):
                     frame.pixel(EPD_WIDTH-y-1,x,self.pixel(x,y))
+                await asyncio.sleep(0)
             frame.scroll(-6,0)
         if self.__rotation == ROTATION_180:
             for i in range(size):
                 fbuffer[size-i-1] = self.buffer[i]
+                if i % 128 == 0:
+                    await asyncio.sleep(0)
             frame.scroll(-6,0)
         return fbuffer
     
-    def deep_sleep(self):
-        self._command(DEEP_SLEEP_MODE,b'\x01')
+    async def deep_sleep(self):
+        await self._command(DEEP_SLEEP_MODE,b'\x01')
     
-    def hard_reset(self):
+    async def hard_reset(self):
         self.rst(1)
-        sleep_ms(1)
+        await asyncio.sleep_ms(1)
         self.rst(0)
-        sleep_ms(10)
+        await asyncio.sleep_ms(10)
         self.rst(1)
     
-    def update(self):
-        self._init_full()
-        self._command(SET_RAM_X_ADDRESS_START_END_POSITION, b'\x00\x0F') #0x0F-->(15+1)*8=128
-        self._command(SET_RAM_Y_ADDRESS_START_END_POSITION, b'\x00\x00\xF9\x00') # 0xF9-->(249+1)=250
-        self._command(SET_RAM_X_ADDRESS_COUNTER, b'\x00') # set RAM x address count to 0
-        self._command(SET_RAM_Y_ADDRESS_COUNTER, b'\x00\x00') # set RAM y address count to 249(0xF9)
-        self._wait_until_idle()
-        self._command(WRITE_RAM,self._get_rotated_buffer())
-        self._update_full()
-        self._power_off()
+    async def update(self):
+        await self._init_full()
+        await self._command(SET_RAM_X_ADDRESS_START_END_POSITION, b'\x00\x0F') #0x0F-->(15+1)*8=128
+        await self._command(SET_RAM_Y_ADDRESS_START_END_POSITION, b'\x00\x00\xF9\x00') # 0xF9-->(249+1)=250
+        await self._command(SET_RAM_X_ADDRESS_COUNTER, b'\x00') # set RAM x address count to 0
+        await self._command(SET_RAM_Y_ADDRESS_COUNTER, b'\x00\x00') # set RAM y address count to 249(0xF9)
+        await self._wait_until_idle()
+        await self._command(WRITE_RAM, await self._get_rotated_buffer())
+        await self._update_full()
+        await self._power_off()
     
-    def update_fast(self):
-        self._init_part()
-        self._command(SET_RAM_X_ADDRESS_START_END_POSITION, b'\x00\x0F') #0x0F-->(15+1)*8=128
-        self._command(SET_RAM_Y_ADDRESS_START_END_POSITION, b'\x00\x00\xF9\x00') # 0xF9-->(249+1)=250
-        self._command(SET_RAM_X_ADDRESS_COUNTER, b'\x00') # set RAM x address count to 0
-        self._command(SET_RAM_Y_ADDRESS_COUNTER, b'\x00\x00') # set RAM y address count to 249(0xF9)
-        self._wait_until_idle()
-        self._command(WRITE_RAM,self._get_rotated_buffer())
-        self._update_part()
-        self._power_off()
+    async def update_fast(self):
+        await self._init_part()
+        await self._command(SET_RAM_X_ADDRESS_START_END_POSITION, b'\x00\x0F') #0x0F-->(15+1)*8=128
+        await self._command(SET_RAM_Y_ADDRESS_START_END_POSITION, b'\x00\x00\xF9\x00') # 0xF9-->(249+1)=250
+        await self._command(SET_RAM_X_ADDRESS_COUNTER, b'\x00') # set RAM x address count to 0
+        await self._command(SET_RAM_Y_ADDRESS_COUNTER, b'\x00\x00') # set RAM y address count to 249(0xF9)
+        await self._wait_until_idle()
+        await self._command(WRITE_RAM, await self._get_rotated_buffer())
+        await self._update_part()
+        await self._power_off()
     
-    def invert(self, value=None):
+    async def invert(self, value=None):
         if value == None:
+            await asyncio.sleep(0)
             return self.__invert
         if value:
-            self._command(DISPLAY_UPDATE_CONTROL_1,b'\x08')
+            await self._command(DISPLAY_UPDATE_CONTROL_1,b'\x08')
         else:
-            self._command(DISPLAY_UPDATE_CONTROL_1,b'\x00')
+            await self._command(DISPLAY_UPDATE_CONTROL_1,b'\x00')
         self.__invert = value
