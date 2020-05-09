@@ -3,8 +3,8 @@
 # ========
 # import gdeh0213b73 as epaper
 # screen = epaper.EPD(espi, cs, dc, rst, busy)
-# screen.fill(1)
-# screen.text('Hello Dragon!',6,32,0)
+# screen.fill(0)
+# screen.text('Hello Dragon!',6,32,1)
 # screen.hard_reset()
 # screen.update()
 # # screen.update_fast()
@@ -93,7 +93,7 @@ TERMINATE_FRAME_READ_WRITE           = b'\xFF' # not in datasheet, aka NOOP
 
 
 class EPD(framebuf.FrameBuffer):
-    def __init__(self,spi,cs,dc,rst,busy,rotation=ROTATION_0,invert=False):
+    def __init__(self,spi,cs,dc,rst,busy,rotation=ROTATION_0,invert=True):
         #self.spi = espi = SPI(2, baudrate=20000000, sck=Pin(18), mosi=Pin(23), polarity=0, phase=0, firstbit=SPI.MSB)
         #self.spi = SPI(1, 10000000, sck=Pin(14), mosi=Pin(13), miso=Pin(12))
         self.spi = spi
