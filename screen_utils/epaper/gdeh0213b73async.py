@@ -12,7 +12,10 @@
 from micropython import const
 from time import sleep_ms
 import framebuf
-import uasyncio as asyncio
+try:
+    import uasyncio as asyncio
+except:
+    import asyncio
 
 # Rotaion
 ROTATION_0 = const(0)
