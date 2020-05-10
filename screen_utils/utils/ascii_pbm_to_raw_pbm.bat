@@ -1,0 +1,1 @@
+python %~dp0ascii_pbm_to_raw_pbm.py %1

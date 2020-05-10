@@ -44,6 +44,7 @@ async def read_header(instream):
         # reading comment state
         if is_reading_comment:
             if _is_new_line(char):
+                await asyncio.sleep(0)
                 is_reading_comment = False
         # reading info state
         elif is_reading_info:
@@ -87,7 +88,8 @@ async def read_data(instream, width, height, format, offset=-1):
     if offset >= 0:
         instream.seek(offset)
     width_count = width // 8
-    if width % 8 != 0:
+    bit_offset = width % 8
+    if bit_offset != 0:
         width_count += 1
     size = width_count * height
     await asyncio.sleep(0)
@@ -105,6 +107,7 @@ async def read_data(instream, width, height, format, offset=-1):
     data = bytearray(size)
     bit = 0
     bitp = 0
+    width_p = 0
     index = 0
     byts = instream.read(1)
     while index < size and len(byts) == 1:
@@ -114,12 +117,20 @@ async def read_data(instream, width, height, format, offset=-1):
         else:
             bit = (bit << 1) | (char-0x30)
             bitp += 1
-            if (bitp >= 8):
+            width_p += 1
+            if width_p == width:
+                bit = bit << bit_offset
                 data[index] = bit
                 index += 1
                 bit = 0
                 bitp = 0
+                width_p = 0
                 await asyncio.sleep(0)
+            elif (bitp >= 8):
+                data[index] = bit
+                index += 1
+                bit = 0
+                bitp = 0
         byts = instream.read(1)
     return data
 
