@@ -66,8 +66,8 @@ class SSD1306(framebuf.FrameBuffer):
             SET_CHARGE_PUMP, 0x10 if self.external_vcc else 0x14,
             SET_DISP | 0x01): # on
             self.write_cmd(cmd)
-        self.fill(0)
-        self.show()
+        # self.fill(0)
+        # self.show()
 
     def poweroff(self):
         self.write_cmd(SET_DISP | 0x00)
@@ -163,15 +163,9 @@ class SSD1306_I2C(SSD1306):
 
     def write_data(self, buf):
         # for support hardware i2c
-        self.i2c.writeto(self.addr, self.mem[0]+buf)
-        # for tiny memory
-#        self.temp[0] = self.addr << 1
-#        self.temp[1] = 0x40 # Co=0, D/C#=1
-#        self.i2c.start()
-#        self.i2c.write(self.temp)
-#        self.i2c.write(buf)
-#        self.i2c.stop()
-
+        data = bytearray([self.mem[0]])
+        data.extend(buf)
+        self.i2c.writeto(self.addr, data)
 
 class SSD1306_SPI(SSD1306):
     def __init__(self, width, height, spi, dc, res, cs, external_vcc=False):
