@@ -137,7 +137,7 @@ def read_image(instream):
 
 def make_image(outstream, width, height, data, comment="made with bpm.py"):
     r'''Write an image file
-    :param: file_path: file to write
+    :param: outstream: file to write
             width: image width
             height: image height
             data: image data in MONO_HLSB format

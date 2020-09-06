@@ -50,6 +50,7 @@ import struct
 # Framebuf format constants:
 MVLSB = 0  # Single bit displays (like SSD1306 OLED)
 MONO_VLSB = 0
+MONO_VMSB = 7
 RGB565 = 1  # 16-bit color displays
 GS4_HMSB = 2  # Unimplemented!
 MHMSB = 3  # Single bit displays like the Sharp Memory

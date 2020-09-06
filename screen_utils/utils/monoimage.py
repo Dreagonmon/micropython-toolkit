@@ -2,6 +2,7 @@
 from PIL import Image,ImageFilter,ImageFont,ImageDraw
 from typing import Union
 MONO_VLSB = 0
+MONO_VMSB = 7
 RGB565 = 1
 GS4_HMSB = 2
 MONO_HLSB = 3
@@ -77,6 +78,21 @@ def img_mono(img:Image,format:int=MONO_VLSB,invert:bool=False):
             for col in range(cols):
                 byt = 0x00
                 for bit in range(7,-1,-1):
+                    # parse byte
+                    y = row*8 + bit
+                    pos = y*img.width + col
+                    # black as image data
+                    if (buf[pos]==0) ^ invert:
+                        byt = byt | 0x01
+                    if bit > 0:
+                        # not last bit
+                        byt = byt << 1
+                data.append(byt)
+    if format == MONO_VMSB:
+        for row in range(rows):
+            for col in range(cols):
+                byt = 0x00
+                for bit in range(8):
                     # parse byte
                     y = row*8 + bit
                     pos = y*img.width + col
