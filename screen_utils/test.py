@@ -1,4 +1,4 @@
-from ssd1306desktop.ssd1306emu import SSD1306_EMU
+from ssd1306desktop.screen_server import MonoScreenEmu
 from ssd1306desktop.framebuf import FrameBuffer, MONO_VLSB
 from ticks import Ticks
 try:
@@ -9,7 +9,7 @@ except:
 DATA_24_24_VEEMON1 = "HBwkxMTYHBwbGxsExMTEBATEBATY4OAAAACAgIAIt7fBQEDHT09JQEBAwcHIR0c+Dg4dERHyn5+dkJCR8vJ+8PCek5OR/v4A"
 DATA_24_24_VEEMON2 = "ODjYGBggODgkJCQYGBgYGBgYGBggwMAAAAAAAQExTk6GgICOv7+3gICBhoaxj494HBxyYmLs/v7z4eHj7e194eH97+/j/f0A"
 
-screen:SSD1306_EMU = None
+screen:MonoScreenEmu = None
 def is_key_down(key):
     if screen==None:
         return False
@@ -80,7 +80,7 @@ class Road(Drawable):
         self.height = 56
         self.__storage = storage
         self.frame = FrameBuffer(bytearray(128*56//8),128,56,MONO_VLSB)
-        self.offset = 64;
+        self.offset = 64
         self.__tick = Ticks()
     def update(self):
         self.frame.fill(0)
@@ -98,11 +98,19 @@ class Road(Drawable):
 
 def main():
     global screen
-    screen = SSD1306_EMU(128,64,name="main",buttons=[
-                "",      "up",        "",        "",       "A",
-            "left",    "down",   "right",       "B",        "",
-                "",        "",        "",        "",       "C",
-    ])
+    screen = MonoScreenEmu(128,64,name="main")
+    # buttons=[
+    #             "",      "up",        "",        "",       "A",
+    #         "left",    "down",   "right",       "B",        "",
+    #             "",        "",        "",        "",       "C",
+    # ]
+    screen.register_key(1,"up")
+    screen.register_key(4,"A")
+    screen.register_key(5,"left")
+    screen.register_key(6,"down")
+    screen.register_key(7,"right")
+    screen.register_key(8,"B")
+    screen.register_key(14,"C")
     # main loop
     storage = {}
     storage["objs"] = []
