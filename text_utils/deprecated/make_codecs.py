@@ -9,7 +9,7 @@ def main():
     ch_dict = {}
     poses = coding.GB2312.all_available_pos()
     for area, posi in poses:
-        byts = coding.GB2312.pos2gb2312(area,posi)
+        byts = coding.GB2312.to_bytes((area,posi))
         # 过滤无效字符
         try:
             utf8 = byts.decode("gb2312").encode("utf8")
@@ -17,7 +17,7 @@ def main():
             print("(",area,",",posi,"),")
             utf8 = b" "
         # utf8还原成UNICODE
-        unicode = coding.UTF_8.u82unicode(utf8)
+        unicode = coding.UTF_8.from_bytes(utf8)
         ch_dict[unicode] = byts
     # 从小到大排序
     keys = list(ch_dict.keys())

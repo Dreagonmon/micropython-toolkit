@@ -49,9 +49,9 @@ class WordDictBlock():
         buffer = fp.read(1) # 读取下一索引的数量
         for i in range(buffer[0]):
             buffer = fp.read(5) # 读取下一输入列表和偏移量
-            blk.next_block_offset[buffer[0]] = int.from_bytes(buffer[1:5],"big",signed=False)
+            blk.next_block_offset[buffer[0]] = int.from_bytes(buffer[1:5],"big")
         # 此时偏移量 = 列表数量x5 + offset + 1
-        blk.words_offset = offset + len(blk.next_block_offset.keys())*5 + 1
+        blk.words_offset = offset + len(blk.next_block_offset)*5 + 1
         # fp.seek(blk.words_offset)
         buffer = fp.read(1)
         while buffer[0] != 0x00:
@@ -63,8 +63,8 @@ class WordDictBlock():
         blk.block_size = fp.tell() - offset
         return blk
 class InputManager():
-    def __init__(self, dict_path):
-        self.__dict_fp = open(dict_path,"rb") # 保持文件打开状态
+    def __init__(self, dict_stream):
+        self.__dict_fp = dict_stream
         self.__offset_list = [] # 历史有效输入的偏移量
         self.__input = bytearray() # 历史输入，但是有效的输入长度要看offset_list
         self.__current_block = WordDictBlock.read_block(self.__dict_fp,0) # 当前状态所处的字典块
@@ -77,7 +77,7 @@ class InputManager():
     def clear(self):
         '''清空当前输入'''
         self.__offset_list.clear()
-        self.__input.clear()
+        self.__input[:] = b''
         self.__current_block = WordDictBlock.read_block(self.__dict_fp,0)
     def input_byte(self,byt):
         '''输入一个字符的ascii数值，只接受小写字母和退格键0x08，返回是否需要更新候选词'''
@@ -128,65 +128,3 @@ class InputManager():
     def get_input_code(self):
         '''获取当前输入的ascii字符序列'''
         return self.__input.decode("ascii")
-
-def __test():
-    input_manager = InputManager("dict.bin")
-    print("小写字母输入拼音，`[`重置候选词分页，`]`下一页候选词，数字键选择候选词，Ctrl+C`退出")
-    import msvcrt
-    c = msvcrt.getch()
-    txt = "" # 已输入文字
-    words = [] # 缓存的候选词列表
-    while c != b'\x03':
-        # b'\x08' backspace
-        # b'\x03' ctrl+c
-        # print("0x{:02X}".format(c[0]))
-        # 换行
-        if c == b'\r':
-            print("\r{}".format(txt))
-            txt = ""
-            words = []
-            input_manager.clear()
-        # 候选词翻页事件
-        if c[0] == 0x5B:
-            input_manager.reset_word()
-            words = input_manager.some_word(5)
-        if c[0] == 0x5D:
-            words = input_manager.some_word(5)
-            if len(words)==0:
-                input_manager.reset_word()
-                words = input_manager.some_word(5)
-        # 选择候选词事件
-        if c[0] > 0x30 and c[0] < 0x36:
-            index = c[0] - 0x31
-            if index < len(words):
-                txt += words[index].decode("gb2312")
-                input_manager.clear()
-                words = []
-        if c[0] == 0x20:
-            if len(words) > 0:
-                txt += words[0].decode("gb2312")
-                input_manager.clear()
-                words = []
-        # 删除文字事件
-        input_s = input_manager.get_input_code()
-        if c[0] == 0x08 and len(input_s) == 0:
-            txt = txt[:-1]
-        # 执行输入
-        changed = input_manager.input_byte(c[0])
-        if changed:
-            words = input_manager.some_word(5)
-        # 准备显示信息
-        input_s = input_manager.get_input_code()
-        words_str = ""
-        count = 1
-        for word in words:
-            words_str += ">{}. {} ".format(count,word.decode("gb2312"))
-            count += 1
-        __show(txt,input_s,words_str)
-        c = msvcrt.getch()
-def __show(txt:str,input_s:str,words:str):
-    text = "\r{:<16} {:<16} {:<64}".format(txt,input_s,words)
-    print(text,end="")
-
-if __name__ == "__main__":
-    __test()

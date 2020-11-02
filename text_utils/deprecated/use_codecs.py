@@ -67,16 +67,16 @@ def convert_u8_gb2312(byts,codec_file,buffer_size=0):
     res = bytearray()
     while index < len(byts):
         fb = byts[index]
-        l = coding.UTF_8.u8len(fb)
+        l = coding.UTF_8.byte_size(fb)
         if l == 1:
             index += 1
-            res.extend(coding.GB2312.ascii2gb2312(fb))
+            res.extend(coding.GB2312.to_bytes(coding.GB2312.from_ascii(fb)))
             continue
-        unic = coding.UTF_8.u82unicode(byts[index:index+l])
+        unic = coding.UTF_8.from_bytes(byts[index:index+l])
         bs = convert(unic,codec_file,buffer_size=buffer_size)
         if not bs:
             index += l
-            res.extend(coding.GB2312.ascii2gb2312(32))
+            res.extend(coding.GB2312.to_bytes(coding.GB2312.from_ascii(32)))
             continue
         res.extend(bs)
         index += l

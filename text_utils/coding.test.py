@@ -1,4 +1,7 @@
-from text_utils import coding
+try:
+    from . import coding
+except:
+    import coding
 
 if __name__ == "__main__":
     # test utf8

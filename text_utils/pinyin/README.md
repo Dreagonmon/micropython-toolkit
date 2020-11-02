@@ -6,7 +6,7 @@
 ## 使用方法
 
 1. 使用make_words_dict.py生成字典
-2. 使用use_words_dict.py中的方法，配合字典文件实现拼音输入
+2. 使用input_manager.py中的方法，配合字典文件实现拼音输入
 
 ## 字典文件格式
 

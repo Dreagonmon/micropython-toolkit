@@ -11,14 +11,6 @@ if __name__ == "__main__":
     f = open(file,"rb")
     w,h,iformat,data = pbm.read_image(f)
     f.close()
-    # with open(os.path.join(fdir,name+".log"),"wb") as f:
-    #     f.write(data)
-    # print(w,h,iformat,len(data))
-    # for i in range(len(data)):
-    #     b = data[i]
-    #     if b != 0:
-    #         print("index",i,"char",b)
-    #         break
     f = open(os.path.join(fdir,new_name),"wb")
     pbm.make_image(f,w,h,data)
     f.close()

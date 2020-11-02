@@ -14,7 +14,7 @@ class Word():
         return "{:s} {:s} {:d}".format(self.word,self.pinyin,self.freq)
 
 
-def get_all_words(dict_path:str,source_encoding:str="utf8",target_encoding:str="utf8",word_length:int=4,min_freq:int = 1):
+def get_all_words(dict_path:str,source_encoding:str="utf8",target_encoding:str="utf8",word_length:int=4,min_freq:int=1,filter=None):
     '''读取文本并转换成Word对象列表，可以指定编码、词汇长度和词频'''
     f = open(dict_path,"r",encoding=source_encoding)
     lines = f.read().split("\n")
@@ -26,17 +26,22 @@ def get_all_words(dict_path:str,source_encoding:str="utf8",target_encoding:str="
         word = tmp[0]
         freq = int(tmp[-1])
         pinyin = "".join(tmp[1:-1])
-        # 只保留配置词频以上的词汇
-        if freq < min_freq:
-            continue
         # 只保留指定编码里面的词汇
         try:
             word.encode(target_encoding,errors='strict')
         except:
             continue
-        # 单片机性能有限，只保留指定长度的词汇
-        if len(word) > word_length:
-            continue
+        if filter != None:
+            # 自定义筛选器
+            if not filter(word, freq):
+                continue
+        else:
+            # 只保留配置词频以上的词汇
+            if freq < min_freq:
+                continue
+            # 单片机性能有限，只保留指定长度的词汇
+            if len(word) > word_length:
+                continue
         words.append(Word(word,pinyin,freq))
     return words
 def arrange_pinyin(words:List[Word]):
@@ -149,17 +154,34 @@ def make_data_block(cmap:Mapping[str,List[Word]],pre:str,offset:int,target_encod
     # 返回数据块，路径数，本块的候选词
     return data, path_count, words
 
+word_1 = 0
+word_2 = 0
 def __main():
+    target_encoding = "gb2312"
     # 获取词汇列表
-    words = get_all_words("list.txt","utf8","gb2312",1,100)
+    def filter(word:str, freq:int):
+        global word_1, word_2
+        if len(word)==1 and freq > 60:
+            word_1 += 1
+            return True
+        # if len(word)==2 and freq > 5000:
+        #     word_2 += 1
+        #     return True
+        return False
+    words = get_all_words("list.txt","utf8",target_encoding,filter=filter)
+    print("汉字 {} 个，词组 {} 个".format(word_1, word_2))
     # 整理词汇列表
     pinyin = arrange_pinyin(words)
     # pinyin = arrange_9key(words)
     # 开始生成字典
-    data,_,_ = make_words_dict(pinyin,"gb2312",info=True)
-    with open("dict.bin","wb") as f:
+    data,_,_ = make_words_dict(pinyin,target_encoding,info=False)
+    with open("pinyin_dict.bin","wb") as f:
         f.write(data)
+    with open("pinyin_dict.py","w") as f:
+        f.write("data=")
+        f.write(str(bytes(data)))
     # 输出信息
+    print("字典编码:",target_encoding)
     print("字典大小:",len(data)/1024,"Kbytes")
     print("词汇数量:",len(words))
     print("拼音数量:",len(pinyin.keys()))
@@ -169,7 +191,7 @@ def __main():
         if len(pinyin[k]) > wmax:
             wmax = len(pinyin[k])
             wmaxk = k
-    print("最大同码:",wmax)
+    print("最大同码: {}个".format(wmax))
     print("最大同码:",wmaxk)
 
 if __name__ == "__main__":

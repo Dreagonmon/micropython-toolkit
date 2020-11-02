@@ -20,11 +20,10 @@ def url_decode(url):
 
 class UTF_8():
     @staticmethod
-    def u8len(first_byte):
+    def byte_size(first_byte):
         pat = 0x01 << 7  # 1000000
-        byt = first_byte  # first byte
         l = 0  # length
-        while byt & pat != 0:
+        while first_byte & pat != 0:
             l = l + 1
             pat = pat >> 1
         if l == 0:
@@ -32,8 +31,26 @@ class UTF_8():
         return l
 
     @staticmethod
-    def u82unicode(u8):
-        l = UTF_8.u8len(u8[0])
+    def unicode_byte_size(value):
+        if value <= 0x7F:
+            return 1 # ascii
+        elif value <= 0x7FF:
+            return 2 # 110 xxxxx
+        elif value <= 0xFFFF:
+            return 3 # 1110 xxxx
+        elif value <= 0x1FFFF:
+            return 4 # 11110 xxx
+        elif value <= 0x7FFFFFF:
+            return 5 # 111110 xx
+        elif value <= 0x80000000:
+            return 6 # 1111110 x
+            # all above followed by number of bytes: 10 xxxxxx
+        else:
+            raise Exception("unicode too large")
+
+    @staticmethod
+    def from_bytes(u8):
+        l = UTF_8.byte_size(u8[0])
         value = 0x00
         if l == 1:
             value = value + u8[0]
@@ -47,90 +64,25 @@ class UTF_8():
         return value
 
     @staticmethod
-    def unicode2u8(value):
-        u8 = None
-        if value <= 0x7F:
-            # 1 byte utf-8
-            u8 = bytearray([value])
+    def to_bytes(value):
+        size = UTF_8.unicode_byte_size(value)
+        u8 = bytearray(size)
+        for i in range(size-1, 0, -1):
+            # last 6 bit
+            u8[i] = 0x80 | (value & 0x3F)
+            value = value >> 6
             pass
-        elif value <= 0x07FF:
-            # 2 bytes utf-8
-            u8 = bytearray([0]*2)
-            u8[0] = 0xC0  # 110 xxxxx
-            u8[0] = u8[0] | (value >> 6)  # xxxxx|
-            u8[1] = 0x80  # 10 xxxxxx
-            u8[1] = u8[1] | (value & 0x3F)  # 00000 xxxxxx
-            pass
-        elif value <= 0xFFFF:
-            # 3 bytes utf-8
-            u8 = bytearray([0]*3)
-            u8[0] = 0xE0  # 1110 xxxx
-            u8[0] = u8[0] | (value >> 12)  # xxxx|
-            u8[1] = 0x80  # 10 xxxxxx
-            u8[1] = u8[1] | ((value >> 6) & 0x3F)  # 0000 xxxxxx 000000
-            u8[2] = 0x80  # 10 xxxxxx
-            u8[2] = u8[2] | (value & 0x3F)  # 0000 000000 xxxxxx
-            pass
-        elif value <= 0x1FFFF:
-            # 4 bytes utf-8
-            u8 = bytearray([0]*4)
-            u8[0] = 0xF0  # 11110 xxx
-            u8[0] = u8[0] | (value >> 18)  # xxx|
-            u8[1] = 0x80  # 10 xxxxxx
-            u8[1] = u8[1] | ((value >> 12) & 0x3F)  # 000 xxxxxx 000000 000000
-            u8[2] = 0x80  # 10 xxxxxx
-            u8[2] = u8[2] | ((value >> 6) & 0x3F)  # 000 000000 xxxxxx 000000
-            u8[3] = 0x80  # 10 xxxxxx
-            u8[3] = u8[3] | (value & 0x3F)  # 000 000000 000000 xxxxxx
-            pass
-        elif value <= 0x7FFFFFF:
-            # 5 bytes utf-8
-            u8 = bytearray([0]*5)
-            u8[0] = 0xF8  # 111110 xx
-            u8[0] = u8[0] | (value >> 24)  # xx|
-            u8[1] = 0x80  # 10 xxxxxx
-            # 000 xxxxxx 000000 000000 000000
-            u8[1] = u8[1] | ((value >> 18) & 0x3F)
-            u8[2] = 0x80  # 10 xxxxxx
-            # 000 000000 xxxxxx 000000 000000
-            u8[2] = u8[2] | ((value >> 12) & 0x3F)
-            u8[3] = 0x80  # 10 xxxxxx
-            # 000 000000 000000 xxxxxx 000000
-            u8[3] = u8[3] | ((value >> 6) & 0x3F)
-            u8[4] = 0x80  # 10 xxxxxx
-            u8[4] = u8[4] | (value & 0x3F)  # 000 000000 000000 000000 xxxxxx
-            pass
-        elif value <= 0x7FFFFFF:
-            # 6 bytes utf-8
-            u8 = bytearray([0]*6)
-            u8[0] = 0xFC  # 1111110 x
-            u8[0] = u8[0] | (value >> 30)  # x|
-            u8[1] = 0x80  # 10 xxxxxx
-            # 000 xxxxxx 000000 000000 000000 000000
-            u8[1] = u8[1] | ((value >> 24) & 0x3F)
-            u8[2] = 0x80  # 10 xxxxxx
-            # 000 000000 xxxxxx 000000 000000 000000
-            u8[2] = u8[2] | ((value >> 18) & 0x3F)
-            u8[3] = 0x80  # 10 xxxxxx
-            # 000 000000 000000 xxxxxx 000000 000000
-            u8[3] = u8[3] | ((value >> 12) & 0x3F)
-            u8[4] = 0x80  # 10 xxxxxx
-            # 000 000000 000000 000000 xxxxxx 000000
-            u8[4] = u8[4] | ((value >> 6) & 0x3F)
-            u8[5] = 0x80  # 10 xxxxxx
-            # 000 000000 000000 000000 000000 xxxxxx
-            u8[5] = u8[5] | (value & 0x3F)
-            pass
-        else:
-            # and more ...
-            pass
+        if size <= 1:
+            return value # ascii
+        lead_bits = (0xFE << (7 - size)) & 0xFF # 0b11111110 << size
+        u8[0] = lead_bits | value
         return u8
-
 
 class GB2312():
     @staticmethod
-    def is_unavailable_position(area,posi):
+    def is_unavailable_pos(pos):
         '''GB2312中，不可用区域'''
+        area, posi = pos
         # 01-09区收录除汉字外的682(846)个字符。
         # 10-15区为空白区，没有使用。
         # 16-55区收录3755(3760)个一级汉字，按拼音排序。
@@ -157,15 +109,16 @@ class GB2312():
             return True
         return False
     @staticmethod
-    def pos2gb2312(area, posi):
+    def to_bytes(pos):
+        area, posi = pos
         return bytes([area+0xA0, posi+0xA0])
 
     @staticmethod
-    def gb23122pos(byts):
+    def from_bytes(byts):
         return (byts[0]-0XA0, byts[1]-0XA0)
 
     @staticmethod
-    def ascii2gb2312(ascii_value):
+    def from_ascii(ascii_value):
         # 非字母符号，使用空格代替
         if ascii_value < b"!"[0] or ascii_value > b"~"[0]:
             area = 1
@@ -176,11 +129,11 @@ class GB2312():
         else:
             area = 3
             pos = ascii_value - b"!"[0] + 1
-        return GB2312.pos2gb2312(area, pos)
+        return (area, pos)
 
     @staticmethod
-    def gb23122ascii(byts):
-        area, posi = GB2312.gb23122pos(byts)
+    def to_ascii(pos):
+        area, posi = pos
         if area == 1 and posi == 11:
             return b"~"[0]
         if area == 3 and posi >= 1 and posi <= 93:
@@ -192,37 +145,26 @@ class GB2312():
         poses = []
         for area in range(1, 94+1):
             for posi in range(1, 94+1):
-                if GB2312.is_unavailable_position(area, posi):
+                if GB2312.is_unavailable_pos((area, posi)):
                     continue
                 poses.append((area, posi))
         return poses
 
     @staticmethod
-    def gb2312_in_available_pos(byts):
-        area, posi = GB2312.gb23122pos(byts)
-        if GB2312.is_unavailable_position(area, posi):
+    def is_available_pos(pos):
+        if GB2312.is_unavailable_pos(pos):
             return False
         return True
 
     @staticmethod
-    def pos2available_pos(area, posi):
+    def to_dict_index(pos):
         '''快速将区位码转换成绝对位置，生成字库用'''
-        if posi < 1 or posi > 94:
-            return -1
-        if (area < 1) or (area > 87) or (area > 9 and area < 16):
-            return -1
-        # 1~9区
-        if area >= 1 and area <= 9:
-            return (area-1)*94 + (posi-1)
-        # 16~87区
-        if area >= 16 and area <= 87:
-            return 846 + (area-16)*94 + (posi-1)
+        area, posi = pos
+        return 94 * (area - 1) + posi - 1
 
     @staticmethod
-    def available_pos2pos(a_pos):
+    def from_dict_index(a_pos):
         '''快速将绝对位置转换成区位码，生成字库用'''
-        if a_pos >= 0 and a_pos < 846:
-            return (a_pos//94+1, a_pos % 94+1)
-        elif a_pos >= 846 and a_pos < 7614:
-            return ((a_pos-846)//94+16, a_pos % 94+1)
-        return (0, 0)
+        area = a_pos // 94 + 1
+        posi = a_pos % 94 + 1
+        return (area, posi)
