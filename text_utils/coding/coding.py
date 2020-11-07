@@ -1,3 +1,4 @@
+from io import IOBase
 # 编码工具类
 def url_decode(url):
     pos = 0
@@ -18,7 +19,7 @@ def url_decode(url):
     return byts.decode('utf-8')
 
 
-class UTF_8():
+class UTF8():
     @staticmethod
     def byte_size(first_byte):
         pat = 0x01 << 7  # 1000000
@@ -50,7 +51,7 @@ class UTF_8():
 
     @staticmethod
     def from_bytes(u8):
-        l = UTF_8.byte_size(u8[0])
+        l = UTF8.byte_size(u8[0])
         value = 0x00
         if l == 1:
             value = value + u8[0]
@@ -65,15 +66,16 @@ class UTF_8():
 
     @staticmethod
     def to_bytes(value):
-        size = UTF_8.unicode_byte_size(value)
+        size = UTF8.unicode_byte_size(value)
         u8 = bytearray(size)
         for i in range(size-1, 0, -1):
             # last 6 bit
             u8[i] = 0x80 | (value & 0x3F)
             value = value >> 6
             pass
-        if size <= 1:
-            return value # ascii
+        if size == 1:
+            u8[0] = value
+            return u8 # ascii
         lead_bits = (0xFE << (7 - size)) & 0xFF # 0b11111110 << size
         u8[0] = lead_bits | value
         return u8
@@ -108,19 +110,24 @@ class GB2312():
         if area==55 and posi>=90 and posi<=94:
             return True
         return False
+
     @staticmethod
     def to_bytes(pos):
         area, posi = pos
+        if area == 0:
+            return bytes([posi])
         return bytes([area+0xA0, posi+0xA0])
 
     @staticmethod
     def from_bytes(byts):
-        return (byts[0]-0XA0, byts[1]-0XA0)
+        if byts[0] <= 0xA0:
+            return (0, byts[0])
+        return (byts[0]-0xA0, byts[1]-0xA0)
 
     @staticmethod
     def from_ascii(ascii_value):
-        # 非字母符号，使用空格代替
         if ascii_value < b"!"[0] or ascii_value > b"~"[0]:
+            # 非字母符号，使用空白
             area = 1
             pos = 1
         elif ascii_value == b"~"[0]:
@@ -134,6 +141,8 @@ class GB2312():
     @staticmethod
     def to_ascii(pos):
         area, posi = pos
+        if area == 0:
+            return posi
         if area == 1 and posi == 11:
             return b"~"[0]
         if area == 3 and posi >= 1 and posi <= 93:
@@ -160,6 +169,8 @@ class GB2312():
     def to_dict_index(pos):
         '''快速将区位码转换成绝对位置，生成字库用'''
         area, posi = pos
+        if area <= 0:
+            return GB2312.to_dict_index(GB2312.from_ascii(posi))
         return 94 * (area - 1) + posi - 1
 
     @staticmethod
@@ -168,3 +179,91 @@ class GB2312():
         area = a_pos // 94 + 1
         posi = a_pos % 94 + 1
         return (area, posi)
+
+class CodeReader(IOBase):
+    def __init__(self, stream, init_last_char=-1):
+        self._stream = stream
+        self._last_char = init_last_char
+        pass
+
+    def readable(self):
+        return True
+    
+    def chars(self):
+        raise NotImplementedError()
+
+    def is_newline(self, char):
+        raise NotImplementedError()
+
+    def read(self, limit=-1):
+        buffer = []
+        if limit == 0:
+            return buffer
+        size = 0
+        for u in self.chars():
+            buffer.append(u)
+            size += 1
+            if limit > 0 and size >= limit:
+                return buffer
+        return buffer
+
+    def readline(self, limit=-1):
+        buffer = []
+        if limit == 0:
+            return buffer
+        size = 0
+        should_stop = False
+        for u in self.chars():
+            if should_stop:
+                if not self.is_newline(u):
+                    self._last_char = u
+                return buffer
+            if self.is_newline(u): # \r \n
+                should_stop = True # read one more, for \r\n
+            else:
+                buffer.append(u)
+            size += 1
+            if limit > 0 and size >= limit:
+                return buffer
+        return buffer
+
+class UTF8Reader(CodeReader):
+    def __init__(self, byte_stream):
+        super().__init__(byte_stream)
+
+    def is_newline(self, char):
+        return char == 10 or char == 13
+
+    def chars(self):
+        # readline read one more last time
+        if self._last_char >= 0:
+            yield self._last_char
+            self._last_char = -1
+        byte = self._stream.read(1)
+        while byte != b'':
+            size = UTF8.byte_size(byte[0])
+            if size > 1:
+                remain = self._stream.read(size-1)
+                byte = byte + remain
+            yield UTF8.from_bytes(byte)
+            byte = self._stream.read(1)
+
+class GB2312Reader(CodeReader):
+    def __init__(self, byte_stream):
+        super().__init__(byte_stream, None)
+
+    def is_newline(self, char):
+        return char[0] == 0 and (char[1] == 10 or char[1] == 13)
+
+    def chars(self):
+        # readline read one more last time
+        if self._last_char:
+            yield self._last_char
+            self._last_char = None
+        byte = self._stream.read(1)
+        while byte != b'':
+            if byte[0] > 0xA0:
+                remain = self._stream.read(1)
+                byte = byte + remain
+            yield GB2312.from_bytes(byte)
+            byte = self._stream.read(1)

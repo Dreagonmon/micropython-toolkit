@@ -68,12 +68,6 @@ class InputManager():
         self.__offset_list = [] # 历史有效输入的偏移量
         self.__input = bytearray() # 历史输入，但是有效的输入长度要看offset_list
         self.__current_block = WordDictBlock.read_block(self.__dict_fp,0) # 当前状态所处的字典块
-    def __enter__(self):
-        return self
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
-    def close(self):
-        self.__dict_fp.close()
     def clear(self):
         '''清空当前输入'''
         self.__offset_list.clear()

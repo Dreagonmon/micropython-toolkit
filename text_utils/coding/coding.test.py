@@ -2,13 +2,14 @@ try:
     from . import coding
 except:
     import coding
+from io import BytesIO
 
 if __name__ == "__main__":
     # test utf8
     for area,posi in coding.GB2312.all_available_pos():
         utf8 = coding.GB2312.to_bytes((area,posi)).decode("gb2312").encode("utf8")
-        unicode = coding.UTF_8.from_bytes(utf8)
-        utf8_2 = coding.UTF_8.to_bytes(unicode)
+        unicode = coding.UTF8.from_bytes(utf8)
+        utf8_2 = coding.UTF8.to_bytes(unicode)
         try:
             assert utf8_2 == utf8
         except:

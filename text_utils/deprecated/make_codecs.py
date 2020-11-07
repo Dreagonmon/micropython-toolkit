@@ -17,7 +17,7 @@ def main():
             print("(",area,",",posi,"),")
             utf8 = b" "
         # utf8还原成UNICODE
-        unicode = coding.UTF_8.from_bytes(utf8)
+        unicode = coding.UTF8.from_bytes(utf8)
         ch_dict[unicode] = byts
     # 从小到大排序
     keys = list(ch_dict.keys())
