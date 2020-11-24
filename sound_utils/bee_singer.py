@@ -44,17 +44,17 @@ class BeeSinger():
 
     def play_next_note(self, _):
         during, event = self.__player.next_event(self.__track)
-        if event.type == umid.TRACK_EVENT_TYPE_META_RESET and event.extra == umid.META_TYPE_END_OF_TRACK:
+        if event[1] == umid.TRACK_EVENT_TYPE_META_RESET and event[3] == umid.META_TYPE_END_OF_TRACK:
             self.start() if self.__loop else self.stop()
             return
-        if event.type == umid.TRACK_EVENT_TYPE_NOTE_OFF:
-            note = event.data[0]
+        if event[1] == umid.TRACK_EVENT_TYPE_NOTE_OFF:
+            note = event[2][0]
             note = 0 if note < 0 else note
             note = len(note_freq) - 1 if note >= len(note_freq) else note
             self.__pwm.freq(note_freq[note])
             self.__pwm.duty(volume_duty[1])
-        elif event.type == umid.TRACK_EVENT_TYPE_NOTE_ON:
-            note = event.data[0]
+        elif event[1] == umid.TRACK_EVENT_TYPE_NOTE_ON:
+            note = event[2][0]
             note = 0 if note < 0 else note
             note = len(note_freq) - 1 if note >= len(note_freq) else note
             self.__pwm.freq(note_freq[note])

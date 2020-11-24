@@ -46,16 +46,6 @@ TRACK_SYSTEM_EVENT_LENGTH = {
 META_TYPE_END_OF_TRACK = 0x2F
 META_TYPE_SET_TEMPO = 0x51
 
-class MIDITrackEvent():
-    def __init__(self, delta, event_type, event_data, event_extra=None):
-        self.delta = delta
-        self.type = event_type
-        self.data = event_data
-        self.extra = event_extra
-
-    def __repr__(self):
-        return '<MIDITrackEvent ticks="{:d}" type="{:X}" data="{}"/>'.format(self.delta, self.type, self.data)
-
 def _read_until(stream, ending, read_block_size = 1):
     data = b''
     block = stream.read(read_block_size)
@@ -88,26 +78,26 @@ def _get_midi_track_event_length(event_type):
     return 0
 
 def _read_midi_track_event(stream):
-    ''' return (readed_size, MIDITrackEvent) '''
+    ''' return (readed_size, (delta, event_type, event_data, event_extra)) '''
     readed, delta = _read_dyn_uint(stream)
     event_type = stream.read(1)[0]
     readed += 1
     event_length = _get_midi_track_event_length(event_type)
     if event_length >= 0:
-        return readed + event_length, MIDITrackEvent(delta, event_type, stream.read(event_length))
+        return readed + event_length, (delta, event_type, stream.read(event_length), None)
     elif event_type == TRACK_EVENT_TYPE_SYSTEM_EXCLUSIVE:
         size, data = _read_until(stream, bytes([TRACK_EVENT_TYPE_END_OF_EXCLUSIVE]), 1)
-        return readed + size, MIDITrackEvent(delta, event_type, data[:-1])
+        return readed + size, (delta, event_type, data[:-1], None)
     elif event_type == TRACK_EVENT_TYPE_END_OF_EXCLUSIVE:
         readed2, size = _read_dyn_uint(stream)
         readed += readed2
-        return readed + size, MIDITrackEvent(delta, event_type, stream.read(size))
+        return readed + size, (delta, event_type, stream.read(size), None)
     else: # meta
         meta_type = stream.read(1)[0]
         readed += 1
         readed2, size = _read_dyn_uint(stream)
         readed += readed2
-        return readed + size,MIDITrackEvent(delta, event_type, stream.read(size), meta_type)
+        return readed + size, (delta, event_type, stream.read(size), meta_type)
 
 def _read_midi_header(stream, check_id=True):
     ''' return (readed_size, track_type, track_count, division) '''
@@ -122,7 +112,7 @@ def _read_midi_header(stream, check_id=True):
     return 14 if check_id else 10, track_type, track_count, division
 
 def _read_midi_track(stream, check_id=True):
-    ''' return (readed_size, track_event_list:[MIDITrackEvent]) '''
+    ''' return (readed_size, track_event_list:[(delta, event_type, event_data, event_extra)]) '''
     readed = 0
     if check_id:
         assert stream.read(4) == b'MTrk'
@@ -143,18 +133,19 @@ def _read_midi_track(stream, check_id=True):
 
 class MIDITrack():
     def __init__(self, events):
-        self.events = events
+        self.events = events # MIDITrackEvent: [(delta, event_type, event_data, event_extra)]
         self.meta = {
             META_TYPE_SET_TEMPO: b'\x07\xA1\x20' # 500_000us
         }
         start_event_index = 0 # first no-meta event index
         for event in events:
-            if event.type == TRACK_EVENT_TYPE_META_RESET:
-                self.meta[event.extra] = event.data
+            if event[1] == TRACK_EVENT_TYPE_META_RESET:
+                self.meta[event[3]] = event[2]
                 start_event_index += 1
             else:
                 break
-        self.events = self.events[start_event_index:]
+        for _ in range(start_event_index):
+            del self.events[0]
         self.us_per_beat = int.from_bytes(self.meta[META_TYPE_SET_TEMPO], 'big')
     
     def __repr__(self):
@@ -162,7 +153,6 @@ class MIDITrack():
 
 class MIDIFile():
     def __init__(self, stream):
-        self.__stream = stream
         _, self.__track_type, self.__track_count, self.__division = _read_midi_header(stream)
         self.tracks = []
         for _ in range(self.__track_count):
@@ -193,15 +183,15 @@ class MIDIPlayer():
         ''' return next_us, track_event '''
         pos = self.__pointer[track_id]
         event = self.__midobj.tracks[track_id].events[pos]
-        if event.type == TRACK_EVENT_TYPE_META_RESET and event.extra == META_TYPE_SET_TEMPO:
-            self.__ups[track_id] = int.from_bytes(event.data, 'big')
-        if event.type == TRACK_EVENT_TYPE_META_RESET and event.extra == META_TYPE_END_OF_TRACK:
+        if event[1] == TRACK_EVENT_TYPE_META_RESET and event[3] == META_TYPE_SET_TEMPO:
+            self.__ups[track_id] = int.from_bytes(event[2], 'big')
+        if event[1] == TRACK_EVENT_TYPE_META_RESET and event[3] == META_TYPE_END_OF_TRACK:
             return 0, event
         pos += 1
         self.__pointer[track_id] = pos
-        if event.type == TRACK_EVENT_TYPE_NOTE_OFF or event.type == TRACK_EVENT_TYPE_NOTE_ON:
+        if event[1] == TRACK_EVENT_TYPE_NOTE_OFF or event[1] == TRACK_EVENT_TYPE_NOTE_ON:
             next_event = self.__midobj.tracks[track_id].events[pos]
-            next_us = next_event.delta * self.__ups[track_id] // self.__midobj.division
+            next_us = next_event[0] * self.__ups[track_id] // self.__midobj.division
             return next_us, event
         else:
             return self.next_event(track_id) # ignore other event
@@ -209,12 +199,3 @@ class MIDIPlayer():
     def reset(self, track_id):
         self.__pointer[track_id] = 0
         self.__ups[track_id] = self.__midobj.tracks[track_id].us_per_beat
-
-
-if __name__ == "__main__":
-    f = open("dm2.mid", "rb")
-    midf = MIDIFile(f)
-    f.close()
-    print(midf)
-    for track in midf.tracks:
-        print(track)
