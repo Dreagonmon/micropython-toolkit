@@ -189,7 +189,7 @@ class MIDIPlayer():
             return 0, event
         pos += 1
         self.__pointer[track_id] = pos
-        if event[1] == TRACK_EVENT_TYPE_NOTE_OFF or event[1] == TRACK_EVENT_TYPE_NOTE_ON:
+        if event[1] & TRACK_EVENT_TYPE_MASK1 == TRACK_EVENT_TYPE_NOTE_OFF or event[1] & TRACK_EVENT_TYPE_MASK1 == TRACK_EVENT_TYPE_NOTE_ON:
             next_event = self.__midobj.tracks[track_id].events[pos]
             next_us = next_event[0] * self.__ups[track_id] // self.__midobj.division
             return next_us, event

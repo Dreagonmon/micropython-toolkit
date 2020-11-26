@@ -47,13 +47,13 @@ class BeeSinger():
         if event[1] == umid.TRACK_EVENT_TYPE_META_RESET and event[3] == umid.META_TYPE_END_OF_TRACK:
             self.start() if self.__loop else self.stop()
             return
-        if event[1] == umid.TRACK_EVENT_TYPE_NOTE_OFF:
+        if event[1] & umid.TRACK_EVENT_TYPE_MASK1 == umid.TRACK_EVENT_TYPE_NOTE_OFF:
             note = event[2][0]
             note = 0 if note < 0 else note
             note = len(note_freq) - 1 if note >= len(note_freq) else note
             self.__pwm.freq(note_freq[note])
             self.__pwm.duty(volume_duty[1])
-        elif event[1] == umid.TRACK_EVENT_TYPE_NOTE_ON:
+        elif event[1] & umid.TRACK_EVENT_TYPE_MASK1 == umid.TRACK_EVENT_TYPE_NOTE_ON:
             note = event[2][0]
             note = 0 if note < 0 else note
             note = len(note_freq) - 1 if note >= len(note_freq) else note
