@@ -2,12 +2,50 @@
 import gc
 try:
     import asyncio
-except:
-    import uasyncio as asyncio
-try:
     import os
 except:
     import uos as os
+    import uasyncio as asyncio
+
+# async def example_server_callback(header_map, body_reader):
+#     ''' resp: (response_type,header,content)
+#         -------------------------------------
+#          response_type    : content
+#         -------------------------------------
+#          forbidden        : 403 Forbidden √ ignore header and content
+#          error            : 500 Internal Server Error, content as info √ ignore header
+#          text             : content as text √
+#          html             : content as html √
+#          json             : content as json √
+#          redirect         : content as redirect location √ ignore header
+#          static           : content is static file path √
+#          stream           : content is stream file path √
+#          raw              : raw stream file path √ ignore header
+#     '''
+#     # url
+#     url = header_map['url']
+#     # path
+#     path = get_url_path(url)
+#     # method
+#     method = header_map['method']
+#     # get body
+#     body = None
+#     if 'content-length' in header_map.keys():
+#         clength = int(header_map['content-length'])
+#         body = (await body_reader.read(clength)).decode()
+#     # post data
+#     form = get_url_params(body)
+#     # query data
+#     query = get_url_params(url)
+#     # return response
+#     response_type = "text"
+#     header = {"Custom":"Header"}
+#     content = "This is test page\n"
+#     content += "method: " + method + "\n"
+#     content += "  path: " + path + "\n"
+#     content += " query: " + str(query) + "\n"
+#     content += "  form: " + str(form) + "\n"
+#     return (response_type, header, content)
 
 def print_exception(e):
     try:
@@ -16,58 +54,6 @@ def print_exception(e):
     except:
         import sys
         sys.print_exception(e)
-
-def timed_function_async(f, *args, **kwargs):
-    myname = f.__name__
-    async def new_func(*args, **kwargs):
-        import utime
-        print('Function [{}] Start'.format(myname))
-        t = utime.ticks_us()
-        result = await f(*args, **kwargs)
-        delta = utime.ticks_diff(utime.ticks_us(), t)
-        print('Function [{}] Time = {:6.3f}ms'.format(myname, delta/1000))
-        return result
-    return new_func
-
-async def example_server_callback(header_map, body_reader):
-    ''' resp: (response_type,header,content)
-        -------------------------------------
-         response_type    : content
-        -------------------------------------
-         forbidden        : 403 Forbidden √ ignore header and content
-         error            : 500 Internal Server Error, content as info √ ignore header
-         text             : content as text √
-         html             : content as html √
-         json             : content as json √
-         redirect         : content as redirect location √ ignore header
-         static           : content is static file path √
-         stream           : content is stream file path √
-         raw              : raw stream file path √ ignore header
-    '''
-    # url
-    url = header_map['url']
-    # path
-    path = get_url_path(url)
-    # method
-    method = header_map['method']
-    # get body
-    body = None
-    if 'content-length' in header_map.keys():
-        clength = int(header_map['content-length'])
-        body = (await body_reader.read(clength)).decode()
-    # post data
-    form = get_url_params(body)
-    # query data
-    query = get_url_params(url)
-    # return response
-    response_type = "text"
-    header = {"Custom":"Header"}
-    content = "This is test page\n"
-    content += "method: " + method + "\n"
-    content += "  path: " + path + "\n"
-    content += " query: " + str(query) + "\n"
-    content += "  form: " + str(form) + "\n"
-    return (response_type, header, content)
 
 # ================
 # http response verb
@@ -188,11 +174,10 @@ class TinyHttpServer:
         while self.server == None:
             await asyncio.sleep(0)
         await self.server.wait_closed()
-    # @timed_function_async
     async def handler_request(self, reader, writer):
         gc.collect()
         hmap = {}
-        print('<--------')
+        # print('<--------')
         # header
         first_line = None
         first_line = str(await reader.readline(),'utf-8')
@@ -217,7 +202,7 @@ class TinyHttpServer:
                 hmap[param] = value
         del line, startpos, param, value
         gc.collect()
-        print('url: '+hmap['url'])
+        # print('url: '+hmap['url'])
         # content
         # deal with request
         if self.callback != None:
@@ -245,7 +230,7 @@ class TinyHttpServer:
         writer.close()
         await writer.wait_closed()
         gc.collect()
-        print('-------->\n')
+        # print('-------->\n')
     # response function
     @staticmethod
     async def __send(writer,text):

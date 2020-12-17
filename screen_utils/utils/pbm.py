@@ -77,7 +77,7 @@ def read_data(instream, width, height, format, offset=-1):
             width: image width
             height: image height
             format: b'P1' or b'P4'
-    :return: data in MONO_HLSB format bytes
+    :return: data in MONO_HLSB(only on micropython, MSB on other platform) format bytes
     '''
     if format != b"P1" and format != b"P4":
         return bytes(0)
