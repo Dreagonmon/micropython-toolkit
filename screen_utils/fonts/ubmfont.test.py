@@ -37,15 +37,9 @@ sys.path.append(os.path.join(current_path, "..", "ssd1306desktop"))
 import ubmfont, coding, framebuf
 
 if __name__ == "__main__":
-    testf = open(os.path.join(current_path, ".." , "out", "pix8x8.ufnt"), 'rb')
+    testf = open(os.path.join(current_path, ".." , "out", "pix10x10.ufnt"), 'rb')
     fq = ubmfont.FontQuery(testf)
-    unic = coding.UTF8.from_bytes('瀚'.encode("utf8"))
-    font_data = fq.query(unic)
-    print(font_data)
-    if font_data != None:
-        frame = framebuf.FrameBuffer(font_data, fq.font_width, fq.font_height, framebuf.MONO_HLSB)
-        print(frame)
-    for ch in "你好龙龍":
+    for ch in "龙龍你好风神翼龙":
         char_unicode = coding.UTF8.from_bytes(ch.encode("utf8"))
         font_data = fq.query(char_unicode)
         if font_data != None:
