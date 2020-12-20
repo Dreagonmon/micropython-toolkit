@@ -191,12 +191,20 @@ def make_unicode_font(block_w, block_h, font_file, font_size, unicodes=list(c fo
     preview = Image.new("1", (block_w*16, block_h*math.ceil(len(unicodes)/16)), color=255)
     preview_x_count = 0
     preview_y_count = 0
+    used_unicode = []
     # make char data
     char_data = []
     count = 0
     for unic in unicodes:
-        char = coding.UTF8.to_bytes(unic).decode("utf8")
+        try:
+            char = coding.UTF8.to_bytes(unic).decode("utf8")
+        except:
+            # print('error unic:', unic)
+            continue
         buffer, fnt_img = get_char_data(char, block_w, block_h, fnt, position_offset, invert)
+        count += 1
+        print("{}/{}".format(count, len(unicodes)), end="\r")
+        # filter
         continue_flag = False
         for ignore_b in ignore_bytes:
             if callable(ignore_b):
@@ -209,6 +217,7 @@ def make_unicode_font(block_w, block_h, font_file, font_size, unicodes=list(c fo
             continue
         # add char data
         char_data.append(CharData(unic, buffer))
+        used_unicode.append(unic)
         # preview
         preview_pos = preview_x_count*block_w, preview_y_count*block_h
         preview.paste(fnt_img, preview_pos)
@@ -216,8 +225,6 @@ def make_unicode_font(block_w, block_h, font_file, font_size, unicodes=list(c fo
         if preview_x_count >= 16:
             preview_x_count = 0
             preview_y_count += 1
-        count += 1
-        # print("{}/{}".format(count, len(unicodes)), end="\r")
     max_unicode_size = 0
     # find max unicode size
     for cd in char_data:
@@ -231,16 +238,16 @@ def make_unicode_font(block_w, block_h, font_file, font_size, unicodes=list(c fo
     data.extend(block_h.to_bytes(1, 'big'))
     index_area.update_next_area_offset(4)
     data.extend(index_area.get_data())
-    # print('data length:', len(data))
+    print('data length:', len(data))
     # return
     if preview_path != None:
         preview.save(preview_path)
     if output_path != None:
         with open(output_path, "wb") as f:
             f.write(data)
-    pass
+    return data, preview, used_unicode
 
-if __name__ == "__main__":
+def main_unicode_16():
     block_width = 16
     block_height = 16
     font_path = os.path.join(current_path, "unifont-13.0.04.ttf")
@@ -265,7 +272,6 @@ if __name__ == "__main__":
         for x in range(block_width):
             for y in range(block_height):
                 filled += frame.pixel(x, y)
-        # print(filled, block_width*block_height)
         if filled >= block_width*block_height * 0.55:
             print("ignored:", char)
             return True
@@ -278,4 +284,30 @@ if __name__ == "__main__":
             return _get_char_data(char_str, block_w, block_h, backup_fnt, position_offset, invert)
         return _get_char_data(char_str, block_w, block_h, fnt, position_offset, invert)
     make_unicode_font(block_width, block_height, font_path, font_size, unicodes=unicodes, ignore_bytes=ignore_bytes, output_path=output_path, preview_path=preview_path, get_char_data=my_get_char_data)
+
+def main_unicode_8():
+    block_width = 8
+    block_height = 8
+    font_path = os.path.join(current_path, "DinkieBitmap-7pxDemo.ttf")
+    preview_path = os.path.join(current_path, "..", "out", "pix{}x{}.png".format(block_width, block_height))
+    output_path = os.path.join(current_path, "..", "out", "pix{}x{}.ufnt".format(block_width, block_height))
+    font_size = 8
+    ignore_bytes = []
+    ignore_bytes.append(bytearray(8))
+    ignore_bytes.append(bytearray(b'\xca\xac\xca\x00\xce\xee\xea\x00'))
+    unicodes = []
+    # unicodes.extend(c for c in range(0x20, 0x7E+1)) # ascii some
+    # unicodes.extend(c for c in range(0x2100, 0x21FF+1)) # symbols
+    # unicodes.extend(c for c in range(0x2200, 0x22FF+1)) # math symbols
+    # unicodes.extend(c for c in range(0x3000, 0x303F+1)) # cjk symbols and punctuation
+    # unicodes.extend(c for c in range(0x3040, 0x30FF+1)) # jp
+    # unicodes.extend(c for c in range(0x4E00, 0x9FFF+1)) # cjk general
+    # unicodes.extend(c for c in range(0xFF00, 0xFFEF+1)) # full ascii
+    unicodes.extend(c for c in range(0x0000, 0xFFFF+1)) # full
+    _, _, used_unicode = make_unicode_font(block_width, block_height, font_path, font_size, unicodes=unicodes, ignore_bytes=ignore_bytes, output_path=output_path, preview_path=preview_path)
+    print("real font count:", len(used_unicode))
+    print(used_unicode)
+
+if __name__ == "__main__":
+    main_unicode_16()
     pass
