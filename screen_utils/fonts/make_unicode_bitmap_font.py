@@ -291,7 +291,7 @@ def main_unicode_16():
 def main_unicode_8():
     block_width = 8
     block_height = 8
-    font_path = os.path.join(current_path, "DinkieBitmap-7pxDemo.ttf")
+    font_path = os.path.join(current_path, "dinkie-bitmap-7px.ttf")
     preview_path = os.path.join(current_path, "..", "out", "pix{}x{}.png".format(block_width, block_height))
     output_path = os.path.join(current_path, "..", "out", "pix{}x{}.ufnt".format(block_width, block_height))
     font_size = 8
@@ -302,7 +302,7 @@ def main_unicode_8():
     unicodes.extend(c for c in range(0x0000, 0xFFFF+1)) # full
     _, _, used_unicode = make_unicode_font(block_width, block_height, font_path, font_size, unicodes=unicodes, ignore_bytes=ignore_bytes, output_path=output_path, preview_path=preview_path)
     print("real font count:", len(used_unicode))
-    print(used_unicode)
+    # print(used_unicode)
 
 def main_unicode_10():
     block_width = 10
@@ -321,5 +321,5 @@ def main_unicode_10():
     # print(used_unicode)
 
 if __name__ == "__main__":
-    main_unicode_10()
+    main_unicode_8()
     pass

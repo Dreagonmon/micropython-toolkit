@@ -39,10 +39,11 @@ import ubmfont, coding, framebuf
 if __name__ == "__main__":
     testf = open(os.path.join(current_path, ".." , "out", "pix10x10.ufnt"), 'rb')
     fq = ubmfont.FontQuery(testf)
+    w, h = fq.get_font_size()
     for ch in "龙龍你好风神翼龙":
         char_unicode = coding.UTF8.from_bytes(ch.encode("utf8"))
         font_data = fq.query(char_unicode)
         if font_data != None:
-            frame = framebuf.FrameBuffer(font_data, fq.font_width, fq.font_height, framebuf.MONO_HLSB)
+            frame = framebuf.FrameBuffer(font_data, w, h, framebuf.MONO_HLSB)
             print(frame)
     pass

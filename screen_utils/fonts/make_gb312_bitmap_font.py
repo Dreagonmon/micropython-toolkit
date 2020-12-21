@@ -105,7 +105,7 @@ def main_gb2312():
     font_size = 8
     data, preview = make_gb2312_font(block_width, block_height, font_path, font_size, ignore_bytes=ignore_bytes, output_path=output_path, preview_path=preview_path)
     # stage 2
-    font_path = os.path.join(current_path, "DinkieBitmap-7pxDemo.ttf") # ignore b'\xca\xac\xca\x00\xce\xee\xea\x00'
+    font_path = os.path.join(current_path, "dinkie-bitmap-7px.ttf") # ignore b'\xca\xac\xca\x00\xce\xee\xea\x00'
     ignore_bytes = [b'\xca\xac\xca\x00\xce\xee\xea\x00']
     font_size = 8
     data = make_gb2312_font(block_width, block_height, font_path, font_size,
