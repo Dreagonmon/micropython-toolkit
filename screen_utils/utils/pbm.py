@@ -21,7 +21,8 @@ def _read_header(instream):
         width,
         hetght,
         raster_data_format_P1_or_P4_or_UNKNOWN,
-        raster_start_position
+        raster_start_position,
+        comment
     )
     '''
     # magic number
@@ -30,6 +31,7 @@ def _read_header(instream):
     if mg != b"P1" and mg != b"P4":
         return (-1, -1, b"UNKNOWN", -1)
     # state machine
+    comment = bytearray()
     buffer = bytearray() # list to store bytes
     is_reading_info = False
     is_reading_comment = False
@@ -40,6 +42,7 @@ def _read_header(instream):
         char = byts[0]
         # reading comment state
         if is_reading_comment:
+            comment.append(char)
             if _is_new_line(char):
                 is_reading_comment = False
         # reading info state
@@ -69,7 +72,7 @@ def _read_header(instream):
                 is_reading_info = True
         byts = instream.read(1)
     pos = instream.tell()
-    return (width, height, mg, pos)
+    return (width, height, mg, pos, comment)
 
 def _read_data(instream, width, height, format, offset=-1):
     r'''Read image data
@@ -96,7 +99,6 @@ def _read_data(instream, width, height, format, offset=-1):
     width_p = 0
     index = 0
     byts = instream.read(1)
-    print(index, "/", size)
     while index < size and len(byts) == 1:
         char = byts[0]
         if _is_space(char):
@@ -130,9 +132,9 @@ def read_image(instream):
         image_data
     )
     '''
-    width, height, mg, _ = _read_header(instream)
+    width, height, mg, _, comment = _read_header(instream)
     data = _read_data(instream, width, height, mg)
-    return (width, height, mg, data)
+    return (width, height, mg, data, comment)
 
 def make_image(outstream, width, height, data, format='P4', comment="made with bpm.py"):
     r'''Write an image file
@@ -145,7 +147,9 @@ def make_image(outstream, width, height, data, format='P4', comment="made with b
     if isinstance(format, bytes) or isinstance(format, bytearray):
         format = format.decode("utf8")
     assert format == "P4" or format == "P1"
-    outstream.write("{:s}\n# {:s}\n{:d} {:d}\n".format(format, comment, width, height).encode())
+    if isinstance(comment, bytes) or isinstance(comment, bytearray):
+        comment = comment.decode("utf8")
+    outstream.write("{:s}\n#{:s}\n{:d} {:d}\n".format(format, comment, width, height).encode())
     if format == "P4":
         outstream.write(data)
     else:
