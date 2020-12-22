@@ -14,7 +14,7 @@ def _is_comment_start(char):
     ''' char is #'''
     return char == 0x23 #[#]
 
-def read_header(instream):
+def _read_header(instream):
     r'''Read file header, get basic information
     :param: instream: stream that support seek, tell, read
     :returns: (
@@ -71,7 +71,7 @@ def read_header(instream):
     pos = instream.tell()
     return (width, height, mg, pos)
 
-def read_data(instream, width, height, format, offset=-1):
+def _read_data(instream, width, height, format, offset=-1):
     r'''Read image data
     :param: instream: stream that support seek, tell, read
             width: image width
@@ -84,39 +84,38 @@ def read_data(instream, width, height, format, offset=-1):
     if offset >= 0:
         instream.seek(offset)
     width_count = width // 8
-    bit_offset = width % 8
-    if bit_offset != 0:
-        width_count += 1
+    width_count += 0 if width % 8 == 0 else 1
     size = width_count * height
     # bytecode format
     if format == b"P4":
         return bytearray(instream.read(size))
     # text format
     data = bytearray(size)
-    bit = 0
+    byte_data = 0
     bitp = 0
     width_p = 0
     index = 0
     byts = instream.read(1)
+    print(index, "/", size)
     while index < size and len(byts) == 1:
         char = byts[0]
         if _is_space(char):
             pass
         else:
-            bit = (bit << 1) | (char-0x30)
+            byte_data = (byte_data << 1) | ((char-0x30) & 0x01)
             bitp += 1
             width_p += 1
             if width_p == width:
-                bit = bit << bit_offset
-                data[index] = bit
+                byte_data <<= 8 - bitp
+                data[index] = byte_data
                 index += 1
-                bit = 0
+                byte_data = 0
                 bitp = 0
                 width_p = 0
             elif (bitp >= 8):
-                data[index] = bit
+                data[index] = byte_data
                 index += 1
-                bit = 0
+                byte_data = 0
                 bitp = 0
         byts = instream.read(1)
     return data
@@ -131,20 +130,35 @@ def read_image(instream):
         image_data
     )
     '''
-    width, height, mg, _ = read_header(instream)
-    data = read_data(instream, width, height, mg)
+    width, height, mg, _ = _read_header(instream)
+    data = _read_data(instream, width, height, mg)
     return (width, height, mg, data)
 
-def make_image(outstream, width, height, data, comment="made with bpm.py"):
+def make_image(outstream, width, height, data, format='P4', comment="made with bpm.py"):
     r'''Write an image file
     :param: outstream: file to write
             width: image width
             height: image height
-            data: image data in MONO_HLSB format
+            data: image data in MONO_HLSB(only on micropython, MSB on other platform) format
     :return: file size
     '''
-    outstream.write("P4\n# {:s}\n{:d} {:d}\n".format(comment, width, height).encode())
-    outstream.write(data)
-    outstream.write("\n".encode())
+    if isinstance(format, bytes) or isinstance(format, bytearray):
+        format = format.decode("utf8")
+    assert format == "P4" or format == "P1"
+    outstream.write("{:s}\n# {:s}\n{:d} {:d}\n".format(format, comment, width, height).encode())
+    if format == "P4":
+        outstream.write(data)
+    else:
+        wbyte = width // 8
+        wbyte += 0 if width % 8 == 0 else 1
+        for y in range(height):
+            for x in range(width):
+                offset = (y * wbyte) + (x // 8)
+                bit = (7 - (x % 8))
+                value = (data[offset] >> bit) & 0x01
+                if x != 0:
+                    outstream.write(b' ')
+                outstream.write(b'0' if value == 0 else b'1')
+            outstream.write("\n".encode())
     size = outstream.tell()
     return size
