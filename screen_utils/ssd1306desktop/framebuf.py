@@ -105,7 +105,7 @@ class FrameBuffer(object):
         elif self.format == RGB565:
             self.__format = FormatRGB565(self.buffer, self.width, self.height, self.format, self.stride)
         else:
-            self.__format = FormatMonoHorizontal(self.buffer, self.width, self.height, self.format, self.stride)
+            self.__format = FormatRGB565(self.buffer, self.width, self.height, self.format, self.stride)
             print('Warning: this framebuf fotmat is not implement yet, use RGB565 instead.')
     def __repr__(self):
         return self.__format.__repr__()

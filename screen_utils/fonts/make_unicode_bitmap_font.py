@@ -266,6 +266,7 @@ def main_unicode_16():
     unicodes.extend(c for c in range(0x3040, 0x30FF+1)) # jp
     unicodes.extend(c for c in range(0x4E00, 0x9FFF+1)) # cjk general
     unicodes.extend(c for c in range(0xFF00, 0xFFEF+1)) # full ascii
+    # unicodes.extend(c for c in range(0x0000, 0xFFFF+1)) # full
     # make fnt
     backup_font_path = os.path.join(current_path, "文泉驿等宽微米黑.ttf")
     backup_fnt = ImageFont.truetype(backup_font_path, size=font_size)
@@ -321,5 +322,5 @@ def main_unicode_10():
     # print(used_unicode)
 
 if __name__ == "__main__":
-    main_unicode_8()
+    main_unicode_16()
     pass
