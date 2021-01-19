@@ -103,7 +103,7 @@ class PygameScreen():
             if event.type == L.QUIT:
                 exit()
 
-    @timed_function
+    # @timed_function
     def do_pygame_loop_once(self, requests=[], wait_fps=-1):
         self.process_requests(requests)
         self.process_pygame_event()
