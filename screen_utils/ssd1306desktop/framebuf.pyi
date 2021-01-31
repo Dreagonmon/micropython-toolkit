@@ -1,4 +1,4 @@
-from typing import Optional, Union, Iterable, NewType
+from typing import Optional, Union, Iterable
 
 # micropython FrameBuffer adapt
 MONO_VLSB: int
@@ -10,7 +10,7 @@ GS8: int
 MONO_HLSB: int
 MONO_HMSB: int
 
-Color = NewType("Color", int)
+Color = int
 class FrameBuffer(object):
     def __init__(self, buffer: Union[bytes, bytearray, memoryview, Iterable], width: int, height: int, format: int, stride: int = ...) -> None: ...
     def fill(self, c: Color) -> None: ...
