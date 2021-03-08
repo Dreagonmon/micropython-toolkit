@@ -21,6 +21,7 @@ ROTATION_270 = const(3)
 # Display resolution
 EPD_WIDTH  = const(128)
 EPD_HEIGHT = const(250)
+EPD_OFFSET = const(6)
 # datasheet says 122x250 (increased to 128 to be multiples of 8)
 # lut define, refer to SSD1675B
 LUT_FULL_UPDATE = memoryview(bytes([
@@ -123,10 +124,16 @@ class EPD(framebuf.FrameBuffer):
         return self.__rotation
     @property
     def height(self):
-        return self.__height
+        if self.__rotation == ROTATION_0 or self.__rotation == ROTATION_180:
+            return EPD_HEIGHT
+        else:
+            return EPD_WIDTH - EPD_OFFSET
     @property
     def width(self):
-        return self.__width
+        if self.__rotation == ROTATION_0 or self.__rotation == ROTATION_180:
+            return EPD_WIDTH - EPD_OFFSET
+        else:
+            return EPD_HEIGHT
 
     def _command(self, command, data=None):
         self.cs(1) # according to LOLIN_EPD
@@ -209,20 +216,21 @@ class EPD(framebuf.FrameBuffer):
         size = EPD_WIDTH * EPD_HEIGHT // 8
         fbuffer = memoryview(bytearray(size))
         frame = framebuf.FrameBuffer(fbuffer, EPD_WIDTH, EPD_HEIGHT, framebuf.MONO_HLSB)
+        get_pixel = self.pixel
+        set_pixel = frame.pixel
         # copy buffer
         if self.__rotation == ROTATION_270:
             for x in range(self.__width):
                 for y in range(self.__height):
-                    frame.pixel(y,EPD_HEIGHT-x-1,self.pixel(x,y))
+                    set_pixel(y, EPD_HEIGHT-x-1, get_pixel(x,y))
         if self.__rotation == ROTATION_90:
             for x in range(self.__width):
                 for y in range(self.__height):
-                    frame.pixel(EPD_WIDTH-y-1,x,self.pixel(x,y))
-            frame.scroll(-6,0)
+                    set_pixel(EPD_WIDTH-y-1-EPD_OFFSET, x, get_pixel(x,y))
         if self.__rotation == ROTATION_180:
-            for i in range(size):
-                fbuffer[size-i-1] = self.buffer[i]
-            frame.scroll(-6,0)
+            for x in range(self.__width):
+                for y in range(self.__height):
+                    set_pixel(EPD_WIDTH-x-1-EPD_OFFSET, EPD_HEIGHT-y-1, get_pixel(x,y))
         return fbuffer
     
     def deep_sleep(self):

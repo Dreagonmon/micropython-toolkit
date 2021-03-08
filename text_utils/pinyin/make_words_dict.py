@@ -157,16 +157,16 @@ def make_data_block(cmap:Mapping[str,List[Word]],pre:str,offset:int,target_encod
 word_1 = 0
 word_2 = 0
 def __main():
-    target_encoding = "gb2312"
+    target_encoding = "utf-8"
     # 获取词汇列表
     def filter(word:str, freq:int):
         global word_1, word_2
         if len(word)==1 and freq > 60:
             word_1 += 1
             return True
-        # if len(word)==2 and freq > 5000:
-        #     word_2 += 1
-        #     return True
+        if len(word)==2 and freq > 5000:
+            word_2 += 1
+            return True
         return False
     words = get_all_words("list.txt","utf8",target_encoding,filter=filter)
     print("汉字 {} 个，词组 {} 个".format(word_1, word_2))

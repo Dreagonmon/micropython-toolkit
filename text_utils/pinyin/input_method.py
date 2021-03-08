@@ -62,7 +62,7 @@ class WordDictBlock():
         # 此时根据偏移量可算出块大小
         blk.block_size = fp.tell() - offset
         return blk
-class InputManager():
+class InputMethod():
     def __init__(self, dict_stream):
         self.__dict_fp = dict_stream
         self.__offset_list = [] # 历史有效输入的偏移量

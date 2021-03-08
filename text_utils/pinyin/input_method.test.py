@@ -1,14 +1,14 @@
 try:
-    from .input_manager import InputManager
+    from .input_method import InputMethod
 except:
-    from input_manager import InputManager
+    from input_method import InputMethod
 
 def __show(txt:str,input_s:str,words:str):
     text = "\r{:<16} {:<16} {:<64}".format(txt,input_s,words)
     print(text,end="")
 
 def __test(dict_fp):
-    input_manager = InputManager(dict_fp)
+    input_manager = InputMethod(dict_fp)
     print("小写字母输入拼音，`[`重置候选词分页，`]`下一页候选词，数字键选择候选词，Ctrl+C`退出")
     import msvcrt
     c = msvcrt.getch()
