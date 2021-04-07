@@ -83,7 +83,7 @@ def _read_data(instream, width, height, format, offset=-1):
     :return: data in MONO_HLSB(only on micropython, MSB on other platform) format bytes
     '''
     if format != b"P1" and format != b"P4":
-        return bytes(0)
+        return bytearray(0)
     if offset >= 0:
         instream.seek(offset)
     width_count = width // 8
@@ -129,7 +129,8 @@ def read_image(instream):
         width,
         hetght,
         raster_data_format_P1_or_P4_or_UNKNOWN,
-        image_data
+        image_data,
+        comment,
     )
     '''
     width, height, mg, _, comment = _read_header(instream)
@@ -142,6 +143,8 @@ def make_image(outstream, width, height, data, format='P4', comment="made with b
             width: image width
             height: image height
             data: image data in MONO_HLSB(only on micropython, MSB on other platform) format
+            format: "P1" or "P4"
+            comment: string
     :return: file size
     '''
     if isinstance(format, bytes) or isinstance(format, bytearray):

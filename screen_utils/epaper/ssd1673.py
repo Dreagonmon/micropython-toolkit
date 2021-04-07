@@ -1,6 +1,14 @@
-from micropython import const
-from time import sleep_ms
-import framebuf
+try:
+    from utime import sleep_ms
+except:
+    from time import sleep_ms
+try:
+    import framebuf
+    from micropython import const
+except ImportError:
+    from mgui.dev import framebuf
+    def const(num):
+        return num
 
 # Rotaion
 ROTATION_0 = const(0)
