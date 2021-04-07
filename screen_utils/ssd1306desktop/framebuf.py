@@ -121,7 +121,7 @@ class FrameBuffer(object):
     def hline(self, x, y, w, c):
         self.fill_rect(x, y, w, 1, c)
     def vline(self, x, y, h, c):
-        self.fill_rect(x, y, h, 1, c)
+        self.fill_rect(x, y, 1, h, c)
     def line(self, x1, y1, x2, y2, c):
         dx = x2 - x1
         if dx > 0:
