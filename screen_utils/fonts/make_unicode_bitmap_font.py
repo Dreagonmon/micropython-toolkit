@@ -23,14 +23,7 @@ def _get_char_data(char_str, block_w, block_h, fnt, position_offset=(0, 0), inve
     char_width = char_right - char_left
     char_height = char_bottom - char_top
     char_x_offset = (block_w - char_width) // 2
-    # char align to center bottom
-    if char_bottom <= block_h - 1:
-        char_y_offset = char_top
-    elif char_height >= block_h * 0.95:
-        # simplely remove top margin
-        char_y_offset = 0
-    else:
-        char_y_offset = block_h - 1 - char_height
+    char_y_offset = char_top
     char_offset = (position_offset[0] + char_x_offset, position_offset[1] + char_y_offset)
     # draw char
     fnt_img = Image.new("1", (block_w, block_h), color=255)
@@ -162,7 +155,7 @@ def main_unicode_16():
     # unicodes.extend(c for c in range(0x0000, 0xFFFF+1)) # full
     # make fnt
     backup_font_path = os.path.join(current_path, "文泉驿等宽微米黑.ttf")
-    backup_fnt = ImageFont.truetype(backup_font_path, size=font_size)
+    backup_fnt = ImageFont.truetype(backup_font_path, size=font_size-2)
     def should_ignore(char, buffer):
         frame = framebuf.FrameBuffer(buffer, block_width, block_height, framebuf.MONO_HLSB)
         filled = 0
@@ -178,6 +171,7 @@ def main_unicode_16():
         byts = char_str.encode("utf8")
         if len(byts) == 1 and byts[0] >= 0x20 and byts[0] <= 0x7E:
             # ascii use a different font
+            position_offset = (0, -2)
             return _get_char_data(char_str, block_w, block_h, backup_fnt, position_offset, invert)
         return _get_char_data(char_str, block_w, block_h, fnt, position_offset, invert)
     make_unicode_font(block_width, block_height, font_path, font_size, unicodes=unicodes, ignore_bytes=ignore_bytes, output_path=output_path, preview_path=preview_path, get_char_data=my_get_char_data)
@@ -186,6 +180,9 @@ def main_unicode_8():
     block_width = 8
     block_height = 8
     font_path = os.path.join(current_path, "dinkie-bitmap-7px.ttf")
+    offset= (0, -3)
+    # font_path = os.path.join(current_path, "guanzhi.ttf")
+    # offset= (0, 0)
     preview_path = os.path.join(current_path, "..", "out", "pix{}x{}.png".format(block_width, block_height))
     output_path = os.path.join(current_path, "..", "out", "pix{}x{}.ufnt".format(block_width, block_height))
     font_size = 8
@@ -195,7 +192,7 @@ def main_unicode_8():
     unicodes = []
     # unicodes.extend(c for c in range(0x20, 0x7E+1)) # ascii some
     unicodes.extend(c for c in range(0x0000, 0xFFFF+1)) # full
-    _, _, used_unicode = make_unicode_font(block_width, block_height, font_path, font_size, unicodes=unicodes, ignore_bytes=ignore_bytes, output_path=output_path, preview_path=preview_path)
+    _, _, used_unicode = make_unicode_font(block_width, block_height, font_path, font_size, unicodes=unicodes, position_offset=offset, ignore_bytes=ignore_bytes, output_path=output_path, preview_path=preview_path)
     print("real font count:", len(used_unicode))
     # print(used_unicode)
 
@@ -203,6 +200,7 @@ def main_unicode_10():
     block_width = 10
     block_height = 10
     font_path = os.path.join(current_path, "DinkieBitmap-9px.ttf")
+    offset= (0, -2)
     preview_path = os.path.join(current_path, "..", "out", "pix{}x{}.png".format(block_width, block_height))
     output_path = os.path.join(current_path, "..", "out", "pix{}x{}.ufnt".format(block_width, block_height))
     font_size = 10
@@ -210,14 +208,20 @@ def main_unicode_10():
     ignore_bytes.append(bytearray(20))
     ignore_bytes.append(bytearray(b'\xe5\x00\x96\x00\x95\x00\xe4\x80\x00\x00\xc8\x80\xed\x80\xaa\x80\xc8\x80\x00\x00'))
     unicodes = []
-    # unicodes.extend(c for c in range(0x20, 0x7E+1)) # ascii some
-    unicodes.extend(c for c in range(0x0000, 0xFFFF+1)) # full
-    _, _, used_unicode = make_unicode_font(block_width, block_height, font_path, font_size, unicodes=unicodes, ignore_bytes=ignore_bytes, output_path=output_path, preview_path=preview_path)
+    unicodes.extend(c for c in range(0x20, 0x7E+1)) # ascii some
+    unicodes.extend(c for c in range(0x2100, 0x21FF+1)) # symbols
+    unicodes.extend(c for c in range(0x2200, 0x22FF+1)) # math symbols
+    unicodes.extend(c for c in range(0x3000, 0x303F+1)) # cjk symbols and punctuation
+    unicodes.extend(c for c in range(0x3040, 0x30FF+1)) # jp
+    unicodes.extend(c for c in range(0x4E00, 0x9FFF+1)) # cjk general
+    unicodes.extend(c for c in range(0xFF00, 0xFFEF+1)) # full ascii
+    # unicodes.extend(c for c in range(0x0000, 0xFFFF+1)) # full
+    _, _, used_unicode = make_unicode_font(block_width, block_height, font_path, font_size, unicodes=unicodes, position_offset=offset, ignore_bytes=ignore_bytes, output_path=output_path, preview_path=preview_path)
     print("real font count:", len(used_unicode))
     # print(used_unicode)
 
 if __name__ == "__main__":
-    main_unicode_8()
-    main_unicode_10()
+    # main_unicode_8()
+    # main_unicode_10()
     main_unicode_16()
     pass

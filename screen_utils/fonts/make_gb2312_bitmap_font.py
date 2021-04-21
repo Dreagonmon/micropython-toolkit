@@ -15,14 +15,7 @@ def _get_char_data(char_str, block_w, block_h, fnt, position_offset=(0, 0), inve
     char_width = char_right - char_left
     char_height = char_bottom - char_top
     char_x_offset = (block_w - char_width) // 2
-    # char align to center bottom
-    if char_bottom <= block_h - 1:
-        char_y_offset = char_top
-    elif char_height >= block_h * 0.95:
-        # simplely remove top margin
-        char_y_offset = 0
-    else:
-        char_y_offset = block_h - 1 - char_height
+    char_y_offset = char_top
     char_offset = (position_offset[0] + char_x_offset, position_offset[1] + char_y_offset)
     # draw char
     fnt_img = Image.new("1", (block_w, block_h), color=255)
@@ -105,11 +98,12 @@ def main_gb2312():
     font_size = 8
     data, preview = make_gb2312_font(block_width, block_height, font_path, font_size, ignore_bytes=ignore_bytes, output_path=output_path, preview_path=preview_path)
     # stage 2
-    font_path = os.path.join(current_path, "dinkie-bitmap-7px.ttf") # ignore b'\xca\xac\xca\x00\xce\xee\xea\x00'
-    ignore_bytes = [b'\xca\xac\xca\x00\xce\xee\xea\x00']
+    font_path = os.path.join(current_path, "guanzhi.ttf") # ignore b'\xca\xac\xca\x00\xce\xee\xea\x00'
+    offset = (0, -1)
+    ignore_bytes = [b'\x00\x00\x00\x00\x00\x00\x00\x00', b'\xca\xac\xca\x00\xce\xee\xea\x00']
     font_size = 8
     data = make_gb2312_font(block_width, block_height, font_path, font_size,
-        init_data=data, init_preview=preview,
+        init_data=data, init_preview=preview, position_offset=offset,
         ignore_bytes=ignore_bytes, output_path=output_path, preview_path=preview_path)
 
 if __name__ == "__main__":
