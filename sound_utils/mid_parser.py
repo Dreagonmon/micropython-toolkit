@@ -178,6 +178,7 @@ def convert_to_single_note_midi(midfile):
 
 def convert_midi_to_bns(file_name):
     mid_file = mido.MidiFile(file_name)
+    mid_file.tracks = mid_file.tracks[0:2]
     mid = convert_to_single_note_midi(mid_file)
     bns = convert_to_bee_note_sound(mid)
     return bns
@@ -189,11 +190,3 @@ if __name__ == "__main__":
         bns = convert_midi_to_bns(file_name)
         with open(output_name, "wb") as f:
             f.write(bns.get_bytes())
-    else:
-        file_path = os.path.join(current_path, "pal31.mid")
-        mid_file = mido.MidiFile(file_path)
-        mid_file.tracks = mid_file.tracks[0:2]
-        mid = convert_to_single_note_midi(mid_file)
-        bns = convert_to_bee_note_sound(mid)
-    with open(os.path.join(current_path, "converted.bns"), "wb") as f:
-        f.write(bns.get_bytes())

@@ -56,7 +56,21 @@ class BeePlayer():
         self.__tempo = _DEFAULT_TEMPO
         self.__event_callback = None
         self.__loop = False
+        # status
+        self.__is_playing = False
     
+    @property
+    def is_playing(self):
+        return self.__is_playing
+    
+    @property
+    def volume(self):
+        return self.__volume
+
+    @property
+    def note_shift(self):
+        return self.__note_shift
+
     def _timer_callback(self, _=None):
         # schedule(self.play_next_note, True)
         self.play_next_note(True)
@@ -114,6 +128,7 @@ class BeePlayer():
         self.__pwm.deinit()
 
     def start(self, loop=False):
+        self.__is_playing = True
         self.__loop = loop
         self.__frame_pointer = 0
         self.__bee_file.seek(10)
@@ -124,6 +139,7 @@ class BeePlayer():
         self.__timer.deinit(self.__timer_id)
         self.__pwm.freq(_FREQ_QUITE)
         self.__pwm.duty(_VOLUME_DUTY[0])
+        self.__is_playing = False
 
     def load(self, file_name):
         self.__bee_file = open(file_name, "rb")
@@ -143,6 +159,8 @@ class BeePlayer():
 
     def set_volume(self, volume):
         ''' set volume 0~9 '''
+        volume = 0 if volume < 0 else volume
+        volume = len(_VOLUME_DUTY) - 1 if volume >= len(_VOLUME_DUTY) else volume
         self.__volume = volume
     
     def set_note_shift(self, note_shift):
