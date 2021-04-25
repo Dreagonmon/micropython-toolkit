@@ -15,13 +15,13 @@ tempo = 500_000 # DEFAULT_TEMPO
 time_in_ns = (tempo / ticks_per_beat) * ticks
 time_in_ms = time_in_ns // 1000
 '''
-import os, sys
+import os, sys, re
 current_path = os.path.abspath(os.path.dirname(__file__))
 
 import mido
 from mido import merge_tracks
 TYPE_EMIT_EVENT = 0X00
-TYPE_SET_TEMPO = 0X00
+TYPE_SET_TEMPO = 0X01
 TYPE_NOTE_ON = 0X02
 TYPE_NOTE_OFF = 0X03
 
@@ -177,16 +177,20 @@ def convert_to_single_note_midi(midfile):
     return mid
 
 def convert_midi_to_bns(file_name):
-    mid_file = mido.MidiFile(file_path)
+    mid_file = mido.MidiFile(file_name)
     mid = convert_to_single_note_midi(mid_file)
     bns = convert_to_bee_note_sound(mid)
     return bns
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        bns = convert_midi_to_bns(sys.argv[1])
+        file_name = sys.argv[1]
+        output_name = re.sub(r"\.mid$", ".bns", file_name, flags=re.IGNORECASE)
+        bns = convert_midi_to_bns(file_name)
+        with open(output_name, "wb") as f:
+            f.write(bns.get_bytes())
     else:
-        file_path = os.path.join(current_path, "pal5.mid")
+        file_path = os.path.join(current_path, "pal31.mid")
         mid_file = mido.MidiFile(file_path)
         mid_file.tracks = mid_file.tracks[0:2]
         mid = convert_to_single_note_midi(mid_file)

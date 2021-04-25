@@ -6,11 +6,13 @@ try:
     import ustruct as struct
 except ImportError:
     import struct
-from machine import Pin, PWM, Timer
-from micropython import schedule, const
+from machine import Pin, PWM
+from micropython import const
+from utime import ticks_ms, ticks_diff, ticks_add
+from shared_timer import ONE_SHOT, get_shared_timer
 
 TYPE_EMIT_EVENT = const(0X00)
-TYPE_SET_TEMPO = const(0X00)
+TYPE_SET_TEMPO = const(0X01)
 TYPE_NOTE_ON = const(0X02)
 TYPE_NOTE_OFF = const(0X03)
 _DEFAULT_TICKS_PER_BEAT = const(480)
@@ -42,7 +44,9 @@ def parse_bee_header(data):
 class BeePlayer():
     def __init__(self, bee_gpio_num, timer_id_num):
         self.__pwm = PWM(Pin(bee_gpio_num), freq=_FREQ_QUITE, duty=_VOLUME_DUTY[0])
-        self.__timer = Timer(timer_id_num)
+        self.__timer = get_shared_timer(timer_id_num)
+        self.__timer_id = 0
+        self.__target_note_time = ticks_ms()
         self.__volume = len(_VOLUME_DUTY) - 1
         self.__note_shift = 0
         self.__bee_file = None
@@ -54,7 +58,8 @@ class BeePlayer():
         self.__loop = False
     
     def _timer_callback(self, _=None):
-        schedule(self.play_next_note, True)
+        # schedule(self.play_next_note, True)
+        self.play_next_note(True)
 
     def note_on(self, note, volume):
         note = note + self.__note_shift
@@ -69,6 +74,15 @@ class BeePlayer():
     def play_next_note(self, play_next_note=False):
         try:
             time, frame_type, padding, frame_data = parse_bee_frame(self.__bee_file.read(8))
+            time = time * self.__tempo // self.__ticks_per_beat // 1000 # us -> ms
+            # play next note
+            self.__frame_pointer += 1
+            if self.__frame_pointer < self.__frame_count and play_next_note and time > 0:
+                # set timer event as soon as possible
+                self.__target_note_time = ticks_add(self.__target_note_time, time)
+                target_period = ticks_diff(self.__target_note_time, ticks_ms())
+                self.__timer_id = self.__timer.init(mode=ONE_SHOT, period=target_period, callback=self._timer_callback)
+            # deal with frame
             if frame_type == TYPE_SET_TEMPO:
                 self.__tempo = int.from_bytes(frame_data, 'big')
             elif frame_type == TYPE_NOTE_OFF:
@@ -77,18 +91,16 @@ class BeePlayer():
                 self.note_on(frame_data[0], self.__volume)
             elif frame_type == TYPE_EMIT_EVENT and self.__event_callback != None:
                 self.__event_callback(frame_data, padding)
-            # play next note
-            self.__frame_pointer += 1
-            if self.__frame_pointer < self.__frame_count:
-                time = time * self.__tempo // self.__ticks_per_beat // 1000 # us -> ms
-                if play_next_note:
-                    self.__timer.init(mode=Timer.ONE_SHOT, period=time, callback=self._timer_callback)
+            # control next note
+            if self.__frame_pointer < self.__frame_count and play_next_note and time <= 0:
+                self.play_next_note(True)
+                return time
+            if self.__frame_pointer >= self.__frame_count:
+                if self.__loop:
+                    self.start(True)
                 else:
-                    return time
-            elif self.__loop:
-                self.start(True)
-            else:
-                self.stop()
+                    self.stop()
+            return time
         except Exception as e:
             import sys
             sys.print_exception(e)
@@ -97,6 +109,7 @@ class BeePlayer():
         self.__pwm.init(freq=_FREQ_QUITE, duty=_VOLUME_DUTY[0])
 
     def deinit(self):
+        self.stop()
         self.unload()
         self.__pwm.deinit()
 
@@ -104,10 +117,11 @@ class BeePlayer():
         self.__loop = loop
         self.__frame_pointer = 0
         self.__bee_file.seek(10)
-        self.__timer.init(mode=Timer.ONE_SHOT, period=0, callback=self._timer_callback)
+        self.__target_note_time = ticks_ms()
+        self.__timer_id = self.__timer.init(mode=ONE_SHOT, period=1, callback=self._timer_callback)
 
     def stop(self):
-        self.__timer.deinit()
+        self.__timer.deinit(self.__timer_id)
         self.__pwm.freq(_FREQ_QUITE)
         self.__pwm.duty(_VOLUME_DUTY[0])
 
