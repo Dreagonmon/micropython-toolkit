@@ -5,7 +5,28 @@ except:
 from io import BytesIO
 
 if __name__ == "__main__":
+    # test utf16
+    data = "你好龙龍\n不知道123".encode("utf16")
+    stream = BytesIO(data)
+    reader = coding.UTF16Reader(stream)
+    assert reader.read() == [20320, 22909, 40857, 40845, 10, 19981, 30693, 36947, 49, 50, 51]
+    for area,posi in coding.GB2312.all_available_pos():
+        utf8 = coding.GB2312.to_bytes((area,posi)).decode("gb2312").encode("utf8")
+        utf16 = coding.GB2312.to_bytes((area,posi)).decode("gb2312").encode("utf16")
+        order = 'little' if utf16[:2] == b'\xff\xfe' else 'big'
+        utf16 = utf16[2:]
+        unicode = coding.UTF16.from_bytes(utf16, order)
+        utf16_2 = coding.UTF16.to_bytes(unicode, order)
+        try:
+            assert utf16_2 == utf16
+        except:
+            print("utf16 test failed",area,posi,utf16,utf16_2,unicode)
+            break
     # test utf8
+    data = "你好龙龍\n不知道123".encode("utf8")
+    stream = BytesIO(data)
+    reader = coding.UTF8Reader(stream)
+    assert reader.read() == [20320, 22909, 40857, 40845, 10, 19981, 30693, 36947, 49, 50, 51]
     for area,posi in coding.GB2312.all_available_pos():
         utf8 = coding.GB2312.to_bytes((area,posi)).decode("gb2312").encode("utf8")
         unicode = coding.UTF8.from_bytes(utf8)

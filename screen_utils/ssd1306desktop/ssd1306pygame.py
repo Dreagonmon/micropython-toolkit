@@ -1,11 +1,10 @@
-try:
-    import framebuf
-except ImportError:
-    from . import framebuf
+import framebuf
 
 from sys import exit
 from multiprocessing import Process, Queue, Array
 # from pygame.time import wait
+from os import environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 from pygame import locals as L
 from pygame import display as pyg_display
 from pygame import event as pyg_event
@@ -43,7 +42,7 @@ def getFrameBufferImage(buffer, width:int, height:int, format:int, scale=4, inve
     return pyg_image.load_basic(fp)
 
 QUEUE_SIZE = 1
-DEFAULT_FPS = 30
+DEFAULT_FPS = 60
 
 class PygameScreen():
     def __init__(self, width, height, scale, shared_buffer) -> None:
@@ -55,7 +54,7 @@ class PygameScreen():
         self.window_size = (width * scale, height * scale)
         pyg_display.init()
         pyg_display.set_caption("SSD1306_EMU")
-        self.surface = pyg_display.set_mode(self.window_size, flags=L.DOUBLEBUF, vsync=1)
+        self.surface = pyg_display.set_mode(self.window_size, flags=L.DOUBLEBUF|L.HWSURFACE, vsync=1)
         self.clock = Clock()
         self.invert = False
         self.contrast = 255
@@ -76,6 +75,7 @@ class PygameScreen():
         #         color = (0, 0, 0) if self.frame.pixel(x + xp, y + yp) == 0 ^ self.invert else (color_value, color_value, color_value)
         #         pyg_gfxdraw.box(self.surface, (tx, ty, self.scale-1, self.scale-1), color)
         surf = getFrameBufferImage(self.buffer, self.width, self.height, framebuf.MONO_VLSB, self.scale, self.invert, color)
+        surf = surf.subsurface(rect)
         self.surface.blit(surf, rect)
 
     def process_requests(self, requests):
@@ -104,22 +104,34 @@ class PygameScreen():
                 exit()
 
     # @timed_function
-    def do_pygame_loop_once(self, requests=[], wait_fps=-1):
+    def do_pygame_loop_once(self, requests=[], wait_fps=-1, ignore_pygame_event=False):
         self.process_requests(requests)
-        self.process_pygame_event()
+        if not ignore_pygame_event:
+            self.process_pygame_event()
         pyg_display.flip()
         if wait_fps > 0:
             self.clock.tick(wait_fps)
+    
+    def get_pygame_event(self):
+        lst = []
+        for event in pyg_event.get():
+            lst.append(Event(event))
+        return lst
 
-def _pygame_loop(queue: Queue, width, height, scale, buffer):
+def _pygame_loop(queue: Queue, width, height, scale, buffer, ignore_pygame_event=False, event_queue: Queue=None):
     screen = PygameScreen(width, height, scale, buffer)
     try:
         while True:
             # queue event
             requests = []
+            if ignore_pygame_event and event_queue != None:
+                events = screen.get_pygame_event()
+                for event in events:
+                    if not event_queue.full():
+                        event_queue.put_nowait(event)
             while not queue.empty():
                 requests.append(queue.get_nowait())
-            screen.do_pygame_loop_once(requests, DEFAULT_FPS)
+            screen.do_pygame_loop_once(requests, DEFAULT_FPS, ignore_pygame_event)
     except KeyboardInterrupt:
         pass
 
@@ -130,26 +142,33 @@ REQUEST_ACTION_INVERT = 0x03
 REQUEST_ACTION_CONTRAST = 0x04
 REQUEST_ACTION_REFRESH = 0x05
 class RefreshRequest():
-    action = REQUEST_ACTION_EXIT
-    value = 0
-    rect = (0, 0, 0, 0) # (x, y, w, h)
-    data = bytearray()
+    def __init__(self):
+        self.action = REQUEST_ACTION_EXIT
+        self.value = 0
+        self.rect = (0, 0, 0, 0) # (x, y, w, h)
+        self.data = bytearray()
+class Event():
+    def __init__(self, event: pyg_event.Event):
+        self.__dict__ = event.__dict__.copy()
+        self.type = event.type
 
 class SSD1306_Emu(framebuf.FrameBuffer):
-    def __init__(self, width, height, *args, main_process=False, **kws):
+    def __init__(self, width, height, *args, main_process=False, ignore_pygame_event=False, **kws):
         self.width = width
         self.height = height
         self.__scale = 8
         self.__main_process = main_process
+        self.__ignore_pygame_event = ignore_pygame_event
         # sub process
         self.__loop = None
         self.__loop_queue = None
+        self.__loop_event_queue = None
         # main process
         self.__request_list = []
+        self.__pygame_event = []
         self.__screen = None
         # internal
         self.__power = True
-        
         # init buffer
         self.pages = self.height // 8
         if height % 8 != 0:
@@ -162,7 +181,7 @@ class SSD1306_Emu(framebuf.FrameBuffer):
         super().__init__(self.buffer, self.width, self.height, framebuf.MONO_VLSB)
         self.__screen_frame = framebuf.FrameBuffer(self.__screen_buffer, self.width, self.height, framebuf.MONO_VLSB)
         # init display
-        self.init_display()
+        self._init_display()
 
     def __del__(self):
         self._pygame_stop()
@@ -180,10 +199,9 @@ class SSD1306_Emu(framebuf.FrameBuffer):
         else:
             if self.__loop_queue == None:
                 return
-            if not self.__loop_queue.full():
-                self.__loop_queue.put_nowait(req)
+            self.__loop_queue.put(req, block=True)
 
-    def init_display(self):
+    def _init_display(self):
         if self.__main_process:
             if self.__screen != None:
                 return
@@ -193,13 +211,52 @@ class SSD1306_Emu(framebuf.FrameBuffer):
                 return
             # start loop
             self.__loop_queue = Queue(QUEUE_SIZE)
+            self.__loop_event_queue = Queue()
             self.__loop = Process(
                 target=_pygame_loop,
-                args=(self.__loop_queue, self.width, self.height, self.__scale, self.__screen_buffer),
-                daemon=False
+                args=(self.__loop_queue, self.width, self.height, self.__scale, self.__screen_buffer, self.__ignore_pygame_event, self.__loop_event_queue),
+                daemon=True
             )
             self.__loop.start()
 
+    def _get_pygame_event(self):
+        lst = []
+        if self.__main_process:
+            lst.extend(self.__pygame_event)
+        else:
+            while not self.__loop_event_queue.empty():
+                lst.append(self.__loop_event_queue.get_nowait())
+        for event in lst:
+            if event.type == L.QUIT:
+                exit()
+        return lst
+
+    def _pygame_loop(self, wait=True):
+        if self.__screen == None:
+            return
+        if self.__ignore_pygame_event:
+            self.__pygame_event.extend(self.__screen.get_pygame_event())
+        self.__screen.do_pygame_loop_once(self.__request_list, DEFAULT_FPS if wait else -1, self.__ignore_pygame_event)
+        self.__request_list.clear()
+
+    def _pygame_stop(self):
+        if self.__loop == None:
+            return
+        if not self.__loop.is_alive():
+            self.__loop == None
+            return
+        while not self.__loop_queue.empty():
+            self.__loop_queue.get_nowait() # clean queue
+        try:
+            self.__pygame_signal(REQUEST_ACTION_EXIT)
+            self.__loop.join(1)
+        except:
+            print("killing pygame process...")
+            self.__loop.terminate()
+        self.__loop_queue.cancel_join_thread()
+        self.__loop = None
+    
+    # SSD1306 function below
     def poweroff(self): # default on
         self.__power = False
         self.__pygame_signal(REQUEST_ACTION_POWER_OFF)
@@ -222,7 +279,7 @@ class SSD1306_Emu(framebuf.FrameBuffer):
             self.__screen_buffer[:] = self.buffer
             self.__pygame_signal(REQUEST_ACTION_REFRESH, rect=(0, 0, self.width, self.height))
         # sleep(0.05) # emu refresh speed
-        wait(50)
+        # wait(50)
 
     def refresh(self, x, y, w, h):
         if not self.__power:
@@ -234,27 +291,4 @@ class SSD1306_Emu(framebuf.FrameBuffer):
                     self.__screen_frame.pixel(x + xp, y + yp, color)
             self.__pygame_signal(REQUEST_ACTION_REFRESH, rect=(x, y, w, h))
         # sleep(0.02)
-        wait(20)
-    
-    def pygame_loop(self, wait=True):
-        if self.__screen == None:
-            return
-        self.__screen.do_pygame_loop_once(self.__request_list, DEFAULT_FPS if wait else -1)
-        self.__request_list.clear()
-
-    def _pygame_stop(self):
-        if self.__loop == None:
-            return
-        if not self.__loop.is_alive():
-            self.__loop == None
-            return
-        while not self.__loop_queue.empty():
-            self.__loop_queue.get_nowait() # clean queue
-        try:
-            self.__pygame_signal(REQUEST_ACTION_EXIT)
-            self.__loop.join(1)
-        except:
-            print("killing pygame process...")
-            self.__loop.terminate()
-        self.__loop_queue.cancel_join_thread()
-        self.__loop = None
+        # wait(20)

@@ -19,6 +19,49 @@ def url_decode(url):
     return byts.decode('utf-8')
 
 
+class UTF16():
+    @staticmethod
+    def byte_size(first_value):
+        if first_value >> 10 == 0b110110: #_00
+            return 4
+        return 2
+
+    @staticmethod
+    def unicode_byte_size(value):
+        if value >= 0xD800 and value <= 0xDFFF:
+            raise Exception("utf16 can not encode this unicode")
+        if value <= 0xFFFF:
+            return 2
+        elif value <= 0x10FFFF:
+            return 4
+        raise Exception("unicode too large")
+
+    @staticmethod
+    def from_bytes(u8, order='little'):
+        fv = int.from_bytes(u8[:2], order)
+        l = UTF16.byte_size(fv)
+        if l == 2:
+            return fv
+        else:
+            value = int.from_bytes(u8[:2], order)
+            value &= 0b00000011_11111111
+            value2 = int.from_bytes(u8[:2], order)
+            value2 &= 0b00000011_11111111
+            return ((value << 10) | value2) + 0x10000
+
+
+    @staticmethod
+    def to_bytes(value, order='little'):
+        size = UTF16.unicode_byte_size(value)
+        if size == 2:
+            return int.to_bytes(value, 2, order)
+        else:
+            value -= 0x10000
+            value1 = ((value & 0b1111111111_0000000000) >> 10) + 0xD800
+            value2 = (value & 0b0000000000_1111111111) + 0xDC00
+            return bytes([value1, value2])
+
+
 class UTF8():
     @staticmethod
     def byte_size(first_byte):
@@ -226,6 +269,36 @@ class CodeReader(IOBase):
             if limit > 0 and size >= limit:
                 return buffer
         return buffer
+
+class UTF16Reader(CodeReader):
+    def __init__(self, byte_stream):
+        self.__order = 'little'
+        super().__init__(byte_stream)
+
+    def is_newline(self, char):
+        return char == 10 or char == 13
+
+    def chars(self):
+        # readline read one more last time
+        if self._last_char >= 0:
+            yield self._last_char
+            self._last_char = -1
+        byte = self._stream.read(2)
+        while byte != b'':
+            if byte == b'\xff\xfe':
+                self.__order = 'little'
+                byte = self._stream.read(2)
+                continue
+            elif byte == b'\xfe\xff':
+                self.__order = 'big'
+                byte = self._stream.read(2)
+                continue
+            size = UTF16.byte_size(int.from_bytes(byte, self.__order))
+            if size > 2:
+                remain = self._stream.read(size-2)
+                byte = byte + remain
+            yield UTF16.from_bytes(byte, self.__order)
+            byte = self._stream.read(2)
 
 class UTF8Reader(CodeReader):
     def __init__(self, byte_stream):
