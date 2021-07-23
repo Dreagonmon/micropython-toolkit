@@ -146,6 +146,9 @@ def main_unicode_16():
     ignore_bytes = []
     unicodes = []
     unicodes.extend(c for c in range(0x20, 0x7E+1)) # ascii some
+    unicodes.extend(c for c in range(0x0080, 0x024F+1)) # latin
+    unicodes.extend(c for c in range(0x2000, 0x206F+1)) # general punctuation
+    unicodes.extend(c for c in range(0x20A0, 0x20CF+1)) # currency symbols
     unicodes.extend(c for c in range(0x2100, 0x21FF+1)) # symbols
     unicodes.extend(c for c in range(0x2200, 0x22FF+1)) # math symbols
     unicodes.extend(c for c in range(0x3000, 0x303F+1)) # cjk symbols and punctuation
@@ -235,6 +238,9 @@ def main_unicode_10():
     ignore_bytes.append(bytearray(b'\xe5\x00\x96\x00\x95\x00\xe4\x80\x00\x00\xc8\x80\xed\x80\xaa\x80\xc8\x80\x00\x00'))
     unicodes = []
     unicodes.extend(c for c in range(0x20, 0x7E+1)) # ascii some
+    unicodes.extend(c for c in range(0x0080, 0x024F+1)) # latin
+    unicodes.extend(c for c in range(0x2000, 0x206F+1)) # general punctuation
+    unicodes.extend(c for c in range(0x20A0, 0x20CF+1)) # currency symbols
     unicodes.extend(c for c in range(0x2100, 0x21FF+1)) # symbols
     unicodes.extend(c for c in range(0x2200, 0x22FF+1)) # math symbols
     unicodes.extend(c for c in range(0x3000, 0x303F+1)) # cjk symbols and punctuation
