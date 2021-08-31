@@ -14,6 +14,7 @@ class RemoteResourceError(Exception):
 
 # UDP Protocol
 CODE_SUCCESS = const(0XFF)
+SIZE_PARAM = const(16)
 CMD_WRITE = const(0x00)
 CMD_READ = const(0x01)
 CMD_GET_INFO = const(0x02)
@@ -24,32 +25,24 @@ class ProtocolUDP:
         udp = usocket.socket(usocket.AF_INET, usocket.SOCK_DGRAM)
         udp.settimeout(timeout_ms/1000)
         address = usocket.getaddrinfo(host, port)[0][-1]
-        # get basic server info
-        udp.sendto(bytearray([CMD_GET_SERVER_INFO]), address)
-        data = udp.recv(8)
-        self.param_size = int.from_bytes(data[0:4], 'big')
-        self.custom_param_offset = int.from_bytes(data[4:8], 'big')
-        self.custom_param_size = self.param_size - self.custom_param_offset
         # get remote block device info
-        req = bytearray(self.param_size)
+        req = bytearray(SIZE_PARAM)
         req[0] = CMD_GET_INFO
-        # todo: inject custom param
-        req[self.custom_param_offset:self.param_size] = bytearray(self.custom_param_size)
         udp.sendto(req, address)
-        data = udp.recv(self.param_size)
+        data = udp.recv(SIZE_PARAM)
         self.block_size = int.from_bytes(data[0:4], 'big')
         self.block_count = int.from_bytes(data[4:8], 'big')
         self.pid = 0 # request id
         self.udp = udp
         self.address = address
         self.retry = retry
-        self.packet_size = self.param_size + self.block_size
+        self.packet_size = SIZE_PARAM + self.block_size
     
     def get_info(self):
         return self.block_size, self.block_count
 
     def read_block(self, block_num):
-        print("read:", block_num)
+        # print("read:", block_num)
         retry = self.retry
         while retry > 0:
             try:
@@ -62,13 +55,13 @@ class ProtocolUDP:
                 self.udp.sendto(req, self.address)
                 data = self.udp.recv(self.packet_size)
                 if data[0] == CODE_SUCCESS and data[1] == id:
-                    return data[self.param_size:self.packet_size]
+                    return data[SIZE_PARAM:self.packet_size]
             except: pass
             retry -= 1
         raise RemoteResourceError()
     
     def write_block(self, block_num, data):
-        print("write:", block_num)
+        # print("write:", block_num)
         retry = self.retry
         while retry > 0:
             try:
@@ -78,7 +71,7 @@ class ProtocolUDP:
                 req[0] = CMD_WRITE
                 req[1] = id
                 req[2:6] = int.to_bytes(block_num, 4, 'big')
-                req[self.param_size:self.packet_size] = data[:self.block_size]
+                req[SIZE_PARAM:self.packet_size] = data[:self.block_size]
                 self.udp.sendto(req, self.address)
                 data = self.udp.recv(self.packet_size)
                 if data[0] == CODE_SUCCESS and data[1] == id:
@@ -132,18 +125,18 @@ class ProtocolCache():
     def read_block(self, block_num):
         cache = self.__query_cache(block_num)
         if cache != None:
-            print("cache hit:", block_num)
+            # print("cache hit:", block_num)
             return cache
         cache = self.__protocol.read_block(block_num)
         self.__update_cache(block_num, cache)
-        print("cache update:", block_num)
+        # print("cache update:", block_num)
         return cache
 
     def write_block(self, block_num, data):
         _ = self.__query_cache(block_num)
         self.__protocol.write_block(block_num, data)
         self.__update_cache(block_num, data)
-        print("cache update:", block_num)
+        # print("cache update:", block_num)
 
 # Network Block Device
 class NetworkBlockDevice:
@@ -212,7 +205,10 @@ class NetworkBlockDevice:
         if op == 6: # block erase, arg is block_num
             try:
                 # print(">erase:",arg)
-                self.protocol.write_block(arg, bytearray(self.block_size))
+                data = bytearray(self.block_size)
+                for i in range(len(data)):
+                    data[i] = 0xFF
+                self.protocol.write_block(arg, data)
                 # print("========")
                 return 0
             except RemoteResourceError:
