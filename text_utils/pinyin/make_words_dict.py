@@ -168,9 +168,9 @@ def __main():
         if len(word)==1 and freq > 60:
             word_1 += 1
             return True
-        if len(word)==2 and freq > 5000:
-            word_2 += 1
-            return True
+        # if len(word)==2 and freq > 5000:
+        #     word_2 += 1
+        #     return True
         return False
     words = get_all_words("list.txt","utf8",target_encoding,filter=filter)
     print("汉字 {} 个，词组 {} 个".format(word_1, word_2))
