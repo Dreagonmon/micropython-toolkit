@@ -75,7 +75,7 @@ class InputMethod():
         self.__current_block = WordDictBlock.read_block(self.__dict_fp,0)
     def input_byte(self,byt):
         '''输入一个字符的ascii数值，只接受小写字母和退格键0x08，返回是否需要更新候选词'''
-        if byt == 0x08:
+        if byt == 0x08 or byt == 0x7F:
             # backspace
             if len(self.__input) == 0:
                 return

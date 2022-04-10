@@ -4,14 +4,37 @@ except:
     from input_method import InputMethod
 
 def __show(txt:str,input_s:str,words:str):
-    text = "\r{:<16} {:<16} {:<64}".format(txt,input_s,words)
-    print(text,end="")
+    import os
+    clear = "\n" * os.get_terminal_size()[1]
+    print(clear)
+    print(txt)
+    print(words)
+    print(input_s)
+    # text = "\r{:<16} {:<16} {:<64}".format(txt,input_s,words)
+    # print(text,end="")
 
 def __test(dict_fp):
+    try:
+        import msvcrt
+        getch = msvcrt.getch
+    except:
+        import termios, sys
+        fd = sys.stdin.fileno()
+        old = termios.tcgetattr(fd)
+        new = termios.tcgetattr(fd)
+        # turn off echo and press-enter
+        new[3] = new[3] & ~termios.ECHO & ~termios.ICANON
+        def getch():
+            try:
+                termios.tcsetattr(fd, termios.TCSADRAIN, new)
+                while True:
+                    char = sys.stdin.read(1)
+                    return char.encode("ascii")
+            finally:
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    c = getch()
     input_manager = InputMethod(dict_fp)
     print("小写字母输入拼音，`[`重置候选词分页，`]`下一页候选词，数字键选择候选词，Ctrl+C`退出")
-    import msvcrt
-    c = msvcrt.getch()
     txt = "" # 已输入文字
     words = [] # 缓存的候选词列表
     while c != b'\x03':
@@ -37,17 +60,17 @@ def __test(dict_fp):
         if c[0] > 0x30 and c[0] < 0x36:
             index = c[0] - 0x31
             if index < len(words):
-                txt += words[index].decode("gb2312")
+                txt += words[index].decode("utf8")
                 input_manager.clear()
                 words = []
         if c[0] == 0x20:
             if len(words) > 0:
-                txt += words[0].decode("gb2312")
+                txt += words[0].decode("utf8")
                 input_manager.clear()
                 words = []
         # 删除文字事件
         input_s = input_manager.get_input_code()
-        if c[0] == 0x08 and len(input_s) == 0:
+        if (c[0] == 0x08 or c[0] == 0x7F) and len(input_s) == 0:
             txt = txt[:-1]
         # 执行输入
         changed = input_manager.input_byte(c[0])
@@ -58,10 +81,10 @@ def __test(dict_fp):
         words_str = ""
         count = 1
         for word in words:
-            words_str += ">{}. {} ".format(count,word.decode("gb2312"))
+            words_str += ">{}. {} ".format(count,word.decode("utf8"))
             count += 1
         __show(txt,input_s,words_str)
-        c = msvcrt.getch()
+        c = getch()
 
 if __name__ == "__main__":
     try:

@@ -161,6 +161,10 @@ def __main():
     # 获取词汇列表
     def filter(word:str, freq:int):
         global word_1, word_2
+        try:
+            word.encode("gb2312", errors="strict")
+        except:
+            return False # contain none gb2312 word
         if len(word)==1 and freq > 60:
             word_1 += 1
             return True
