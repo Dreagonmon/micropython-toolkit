@@ -1,5 +1,4 @@
 # micropython-toolkit
-[MOVE TO GITHUB](https://github.com/Dreagonmon/micropython-toolkit)
 
 #### 介绍
 一些micropython开发小工具
